@@ -2,7 +2,7 @@ import 'package:circleslate/core/constants/app_assets.dart';
 
 enum ChatMessageStatus { sending, sent, delivered, seen, failed }
 
-class Participant {
+class GroupParticipant {
   final String id;
   final String email;
   final String fullName;
@@ -13,7 +13,7 @@ class Participant {
   final bool canRemove;
   final bool isCurrentUser;
 
-  Participant({
+  GroupParticipant({
     required this.id,
     required this.email,
     required this.fullName,
@@ -25,8 +25,8 @@ class Participant {
     required this.isCurrentUser,
   });
 
-  factory Participant.fromJson(Map<String, dynamic> json) {
-    return Participant(
+  factory GroupParticipant.fromJson(Map<String, dynamic> json) {
+    return GroupParticipant(
       id: json['id'].toString(),
       email: json['email'] ?? '',
       fullName: json['full_name'] ?? '',
@@ -56,9 +56,20 @@ class Message {
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
+    String senderId;
+    if (json.containsKey('sender') && json['sender'] != null && json['sender']['id'] != null) {
+      senderId = json['sender']['id'].toString();
+    } else if (json.containsKey('sender_id') && json['sender_id'] != null) {
+      senderId = json['sender_id'].toString();
+    } else if (json.containsKey('user_id') && json['user_id'] != null) {
+      senderId = json['user_id'].toString();
+    } else {
+      senderId = 'unknown';
+    }
+
     return Message(
       id: json['id'].toString(),
-      senderId: json['sender_id'].toString(),
+      senderId: senderId,
       content: json['content'],
       timestamp: json['timestamp'],
       messageType: json['message_type'] ?? 'text',
@@ -70,13 +81,13 @@ class GroupChat {
   final String id;
   final String? name;
   final bool isGroup;
-  final List<Participant> participants;
+  final List<GroupParticipant> GroupParticipants;
   final String? lastMessage;
   final String? lastMessageTime;
   final int unreadCount;
   final String? displayName;
   final String? displayPhoto;
-  final int participantCount;
+  final int GroupParticipantCount;
   final String? userRole;
   final ChatMessageStatus status;
   final String currentUserId;
@@ -88,13 +99,13 @@ class GroupChat {
     required this.id,
     this.name,
     required this.isGroup,
-    required this.participants,
+    required this.GroupParticipants,
     this.lastMessage,
     this.lastMessageTime,
     this.unreadCount = 0,
     this.displayName,
     this.displayPhoto,
-    required this.participantCount,
+    required this.GroupParticipantCount,
     this.userRole,
     this.status = ChatMessageStatus.seen,
     required this.isCurrentUserAdminInGroup,
@@ -110,15 +121,15 @@ class GroupChat {
       id: json['id'].toString(),
       name: json['name'],
       isGroup: json['is_group'] ?? false,
-      participants: (json['participants'] as List<dynamic>?)
-          ?.map((p) => Participant.fromJson(p))
+      GroupParticipants: (json['GroupParticipants'] as List<dynamic>?)
+          ?.map((p) => GroupParticipant.fromJson(p))
           .toList() ?? [],
       lastMessage: lastMessage?.content,
       lastMessageTime: lastMessage?.timestamp,
       unreadCount: json['unread_count'] ?? 0,
       displayName: json['display_name'],
       displayPhoto: json['display_photo'] ?? AppAssets.groupChatIcon,
-      participantCount: json['participant_count'] ?? 0,
+      GroupParticipantCount: json['GroupParticipant_count'] ?? 0,
       userRole: json['user_role'],
       status: ChatMessageStatus.seen, isCurrentUserAdminInGroup: true,
     );
@@ -130,7 +141,7 @@ class GroupInfo {
   final String name;
   final int memberCount;
   final DateTime createdAt;
-  final Participant createdBy;
+  final GroupParticipant createdBy;
 
   GroupInfo({
     required this.id,
@@ -146,7 +157,7 @@ class GroupInfo {
       name: json['name'] ?? '',
       memberCount: json['member_count'] ?? 0,
       createdAt: DateTime.parse(json['created_at']),
-      createdBy: Participant.fromJson(json['created_by']),
+      createdBy: GroupParticipant.fromJson(json['created_by']),
     );
   }
 }
@@ -182,7 +193,7 @@ class UserPermissions {
 
 class GroupMembersResponse {
   final GroupInfo groupInfo;
-  final List<Participant> members;
+  final List<GroupParticipant> members;
   final UserPermissions userPermissions;
 
   GroupMembersResponse({
@@ -195,7 +206,7 @@ class GroupMembersResponse {
     return GroupMembersResponse(
       groupInfo: GroupInfo.fromJson(json['group_info']),
       members: (json['members'] as List<dynamic>)
-          .map((memberJson) => Participant.fromJson(memberJson))
+          .map((memberJson) => GroupParticipant.fromJson(memberJson))
           .toList(),
       userPermissions: UserPermissions.fromJson(json['user_permissions']),
     );
@@ -219,11 +230,10 @@ class GroupMember {
     required this.email,
     required this.children,
     this.imageUrl,
-    required this.role, required bool isCurrentUserAdmin,
+    required this.role,
   });
 
   factory GroupMember.fromJson(Map<String, dynamic> json) {
-    // Helper to parse role from multiple possible keys
     bool isAdmin = false;
     if (json.containsKey('is_admin')) {
       isAdmin = json['is_admin'] == true;
@@ -233,7 +243,6 @@ class GroupMember {
       isAdmin = (json['role']?.toString().toLowerCase() == 'admin');
     }
 
-    // Parse image url from multiple possible keys
     String? imageUrl;
     if (json['avatar'] != null && json['avatar'].toString().isNotEmpty) {
       imageUrl = json['avatar'];
@@ -252,7 +261,6 @@ class GroupMember {
       children: (json['children'] ?? '').toString(),
       imageUrl: imageUrl,
       role: isAdmin ? MemberRole.admin : MemberRole.member,
-      isCurrentUserAdmin: false,
     );
   }
 }

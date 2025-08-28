@@ -38,9 +38,7 @@ class ConversationProvider extends ChangeNotifier {
 
   void _onAuthProviderChange() {
     // Update conversations from AuthProvider's public conversations list
-    _conversations = _authProvider.conversations
-        .map((data) => Conversation.fromJson(data))
-        .toList();
+    _conversations = _authProvider.conversations.map((data) => Conversation.fromJson(data)).toList();
     _isLoading = _authProvider.isLoading;
     _errorMessage = _authProvider.errorMessage;
     notifyListeners();
@@ -78,7 +76,7 @@ class ConversationProvider extends ChangeNotifier {
     _channel = WebSocketChannel.connect(uri);
 
     _channel!.stream.listen(
-      (message) {
+          (message) {
         try {
           final data = json.decode(message);
 
@@ -118,10 +116,11 @@ class ConversationProvider extends ChangeNotifier {
   String? _getid() {
     if (_conversations.isNotEmpty) {
       final firstId = _conversations.first.id;
-      if (firstId.isNotEmpty && firstId != 'string') {
+      if (firstId != null && firstId.isNotEmpty && firstId != 'string') {
         return firstId;
       }
     }
     return null;
   }
+
 }

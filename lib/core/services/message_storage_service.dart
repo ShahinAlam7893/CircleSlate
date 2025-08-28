@@ -10,8 +10,8 @@ class StoredMessage {
   final String id;
   final String text;
   final DateTime timestamp;
-  final MessageSender sender;
   final String senderId;
+  final MessageSender sender;
   final String? senderImageUrl;
   final MessageStatus status;
   final String? clientMessageId;
@@ -20,10 +20,10 @@ class StoredMessage {
     required this.id,
     required this.text,
     required this.timestamp,
-    required this.sender,
     required this.senderId,
+    required this.sender,
     this.senderImageUrl,
-    this.status = MessageStatus.sent,
+    required this.status,
     this.clientMessageId,
   });
 
@@ -63,8 +63,8 @@ class StoredMessage {
     String? id,
     String? text,
     DateTime? timestamp,
+    String? senderId,
     MessageSender? sender,
-    int? senderId,
     String? senderImageUrl,
     MessageStatus? status,
     String? clientMessageId,
@@ -73,8 +73,8 @@ class StoredMessage {
       id: id ?? this.id,
       text: text ?? this.text,
       timestamp: timestamp ?? this.timestamp,
+      senderId: senderId ?? this.senderId,
       sender: sender ?? this.sender,
-      senderId: senderId?.toString() ?? this.senderId,
       senderImageUrl: senderImageUrl ?? this.senderImageUrl,
       status: status ?? this.status,
       clientMessageId: clientMessageId ?? this.clientMessageId,
@@ -134,18 +134,27 @@ class MessageStorageService {
     }
   }
 
+  static Set<String> _processedMessageIds = {};
+
   static Future<void> addMessage(String conversationId, StoredMessage message) async {
+    if (_processedMessageIds.contains(message.id)) {
+      debugPrint('[MessageStorageService] Already processed message: ${message.id}');
+      return;
+    }
     try {
       final existingMessages = await loadMessages(conversationId);
 
       final isDuplicate = existingMessages.any((existing) =>
       existing.id == message.id ||
-          (existing.clientMessageId != null && existing.clientMessageId == message.clientMessageId)
-      );
+          (existing.clientMessageId != null && existing.clientMessageId == message.clientMessageId) ||
+          (existing.senderId == message.senderId &&
+              existing.text == message.text &&
+              (message.timestamp.difference(existing.timestamp).abs() < Duration(seconds: 5))));
 
       if (!isDuplicate) {
         existingMessages.add(message);
         await saveMessages(conversationId, existingMessages);
+        _processedMessageIds.add(message.id);
         debugPrint('[MessageStorageService] Added message ${message.id} (clientId:${message.clientMessageId}) to $conversationId');
       } else {
         debugPrint('[MessageStorageService] Duplicate message skipped: ${message.id}');
@@ -155,10 +164,31 @@ class MessageStorageService {
     }
   }
 
+  Future<void> updateMessage(String conversationId, StoredMessage updatedMessage, {String? oldClientMessageId}) async {
+    try {
+      final messages = await loadMessages(conversationId);
+      final index = messages.indexWhere(
+            (m) => m.id == updatedMessage.id || (oldClientMessageId != null && m.clientMessageId == oldClientMessageId),
+      );
+
+      if (index != -1) {
+        messages[index] = updatedMessage;
+        await saveMessages(conversationId, messages);
+        debugPrint('[MessageStorageService] Updated message ${updatedMessage.id} in $conversationId');
+      } else {
+        debugPrint('[MessageStorageService] Message not found for update: ${updatedMessage.id}');
+      }
+    } catch (e) {
+      debugPrint('[MessageStorageService] Error updating message: $e');
+    }
+  }
+
+
+
   static Future<void> updateMessageStatus(
       String conversationId,
       String messageId,
-      MessageStatus newStatus, {String? clientMessageId}) async {
+      MessageStatus newStatus, {String? clientMessageId, String? oldClientMessageId}) async {
     try {
       final messages = await loadMessages(conversationId);
       bool updated = false;

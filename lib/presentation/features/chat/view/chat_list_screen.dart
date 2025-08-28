@@ -43,10 +43,10 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
       setState(() {
         _isLoadingProfile = true;
       });
-      
+
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       await authProvider.fetchUserProfile();
-      
+
       setState(() {
         _isLoadingProfile = false;
       });
@@ -157,7 +157,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
       debugPrint('[ChatListPage] Performing search for: "$query"');
       final results = await _userSearchService.searchUsers(query);
       debugPrint('[ChatListPage] Search returned ${results.length} results');
-      
+
       if (mounted) {
         setState(() {
           _userSearchResults = results;
@@ -181,7 +181,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
   @override
   Widget build(BuildContext context) {
     final isSearchMode = _searchController.text.trim().isNotEmpty;
-    
+
     // Show loading if profile is being loaded
     if (_isLoadingProfile) {
       return Scaffold(
@@ -219,7 +219,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
         ),
       );
     }
-    
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -246,30 +246,30 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                   );
                   return;
                 }
-                
+
                 debugPrint('[ChatListPage] Navigating to CreateGroupPage with currentUserId: $currentUserId');
                 debugPrint('[ChatListPage] Route path: ${RoutePaths.creategrouppage}');
-                
+
                 // Try navigation with await to catch any errors
                 final result = await context.push(
-                  RoutePaths.creategrouppage, 
-                  extra: {'currentUserId': currentUserId}
+                    RoutePaths.creategrouppage,
+                    extra: {'currentUserId': currentUserId}
                 );
-                
+
                 debugPrint('[ChatListPage] Successfully navigated to CreateGroupPage, result: $result');
-                
+
                 // Refresh chat list after returning from create group
                 _refreshChats();
-                
+
               } catch (e) {
                 debugPrint('[ChatListPage] Error navigating to CreateGroupPage: $e');
-                
+
                 // Fallback: try with hardcoded path
                 try {
                   debugPrint('[ChatListPage] Trying fallback navigation with hardcoded path');
                   await context.push(
-                    '/group_create', 
-                    extra: {'currentUserId': currentUserId}
+                      '/group_create',
+                      extra: {'currentUserId': currentUserId}
                   );
                   debugPrint('[ChatListPage] Fallback navigation successful');
                   _refreshChats();
@@ -464,21 +464,21 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
           try {
             // Ensure user profile is loaded before proceeding
             await _ensureUserProfileLoaded();
-            
+
             if (currentUserId == null || currentUserId!.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('User ID is missing. Please log in again.')),
               );
               return;
             }
-            
+
             debugPrint('[ChatListPage] Starting chat with user: ${user.fullName}');
             debugPrint('[ChatListPage] currentUserId: $currentUserId');
             debugPrint('[ChatListPage] partnerId: ${user.id}');
-            
+
             final conversationId = await ChatService.getOrCreateConversation(
               currentUserId!,
-              user.id, 
+              user.id,
               partnerName: user.fullName,
             );
 
@@ -570,7 +570,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
       onTap: () {
         if (!chat.isGroupChat && chat.participants.isNotEmpty) {
           final partner = chat.participants.firstWhere(
-            (p) => p['id'].toString() != currentUserId,
+                (p) => p['id'].toString() != currentUserId,
             orElse: () => null,
           );
 

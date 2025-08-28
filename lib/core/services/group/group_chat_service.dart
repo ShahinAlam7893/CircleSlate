@@ -3,10 +3,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/models/group_model.dart';
-import '../../network/endpoints.dart';
 
 class GroupChatService {
-  static const String baseUrl = '${Urls.baseUrl}/chat/conversations/';
+  static const String baseUrl = 'http://10.10.13.27:8000/api/chat/conversations/';
 
   static Future<List<GroupChat>> fetchGroupChats() async {
     final prefs = await SharedPreferences.getInstance();
@@ -66,7 +65,7 @@ class GroupChatService {
     }
   }
 
-  static Future<List<Participant>> fetchGroupMembers(String conversationId) async {
+  static Future<List<GroupParticipant>> fetchGroupMembers(String conversationId) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('accessToken');
 
@@ -86,7 +85,7 @@ class GroupChatService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final List<dynamic> membersJson = data['members'] ?? [];
-      return membersJson.map<Participant>((json) => Participant.fromJson(json)).toList();
+      return membersJson.map<GroupParticipant>((json) => GroupParticipant.fromJson(json)).toList();
     } else {
       throw Exception('Failed to load group members. Status Code: ${response.statusCode}');
     }

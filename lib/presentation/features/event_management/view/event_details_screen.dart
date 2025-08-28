@@ -7,8 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart'; // Added for date parsing
-import 'package:url_launcher/url_launcher.dart'; // Added for Google Calendar URL launching
+import 'package:intl/intl.dart'; // For date parsing
+import 'package:url_launcher/url_launcher.dart'; // For Google Calendar URL launching
 
 import '../../../common_providers/user_events_provider.dart';
 import '../controllers/eventManagementControllers.dart';
@@ -80,7 +80,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
       selectedItemColor: AppColors.primaryBlue,
       unselectedItemColor: Colors.grey,
       onTap: onItemTapped,
-      type: BottomNavigationBarType.fixed, // Ensures all labels are visible
+      type: BottomNavigationBarType.fixed,
       backgroundColor: Colors.white,
       selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
     );
@@ -101,6 +101,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
   String? _responseStatus;
 
   late Future<Event> _eventDetails;
+  bool _isNavigating = false; // Flag to prevent multiple navigations
 
   @override
   void initState() {
@@ -108,7 +109,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     _eventDetails = EventService.fetchEventDetails(widget.eventId);
   }
 
-  // New function to add event to Google Calendar
+  // Add event to Google Calendar
   Future<void> _addToGoogleCalendar(Event event) async {
     if (event.date.isEmpty || event.startTime.isEmpty || event.endTime.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -118,7 +119,6 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     }
 
     try {
-      // Parse date and times
       final DateTime? eventDate = DateFormat('yyyy-MM-dd').parse(event.date);
       final startTimeParts = event.startTime.split(':');
       final endTimeParts = event.endTime.split(':');
@@ -146,19 +146,12 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
         return;
       }
 
-      // Encode event details for URL
       final String title = Uri.encodeComponent(event.title.isEmpty ? "Event" : event.title);
       final String details = Uri.encodeComponent(event.description.isEmpty ? "Details" : event.description);
       final String location = Uri.encodeComponent(event.location.isEmpty ? "Location" : event.location);
 
-      // Format DateTime for Google Calendar: YYYYMMDDTHHMMSS
       String formatDateTime(DateTime dateTime) {
-        return dateTime.toUtc()
-            .toIso8601String()
-            .replaceAll('-', '')
-            .replaceAll(':', '')
-            .split('.')
-            .first;
+        return dateTime.toUtc().toIso8601String().replaceAll('-', '').replaceAll(':', '').split('.').first;
       }
 
       final String start = formatDateTime(startDateTime);
@@ -189,35 +182,46 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
   }
 
   void _handleResponse(String responseType, Event event) {
-    EventService.sendResponse(widget.eventId, responseType).then((_) {
-      setState(() {
-        _isJoining = responseType == 'going';
-      });
+    if (_isNavigating) return; // Prevent multiple response submissions
 
-      // Notify UserEventsProvider
+    EventService.sendResponse(widget.eventId, responseType).then((_) {
       final userEventsProvider = Provider.of<UserEventsProvider>(context, listen: false);
       if (responseType == 'going') {
         userEventsProvider.addGoingDate(event.date);
+        _refreshEventDetails();
+        _addToGoogleCalendar(event);
+        setState(() {
+          _isJoining = true;
+        });
       } else {
         userEventsProvider.removeGoingDate(event.date);
-      }
-
-      // Fetch the updated event details after the response is sent
-      _refreshEventDetails();
-
-      // If the user clicked "I'm Joining", add the event to Google Calendar
-      if (responseType == 'going') {
-        _addToGoogleCalendar(event);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You have declined the event')),
+        );
+        setState(() {
+          _isNavigating = true; // Set flag to prevent further actions
+        });
+        // Navigate immediately to prevent re-fetch
+        context.go('/home'); // Or '/notifications'
       }
     }).catchError((error) {
       print('Error submitting response: $error');
+      String errorMessage = 'Error submitting response: $error';
+      if (error.toString().contains('You don\'t have permission to respond to this event')) {
+        errorMessage = 'You are not authorized to respond to this event.';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error submitting response: $error')),
+        SnackBar(content: Text(errorMessage)),
       );
+      setState(() {
+        _isNavigating = true; // Set flag to prevent further actions
+      });
+      context.go('/home'); // Navigate away on error
     });
   }
 
   void _refreshEventDetails() {
+    if (_isNavigating) return; // Skip refresh if navigating
     setState(() {
       _eventDetails = EventService.fetchEventDetails(widget.eventId);
     });
@@ -227,33 +231,35 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // Define base font scale factors for different text types
-    final double titleFontSize = screenWidth * 0.055; // For main event title
-    final double appBarTitleFontSize = screenWidth * 0.05; // For app bar title
-    final double subtitleFontSize = screenWidth * 0.04; // For section headers, participant name
-    final double bodyFontSize = screenWidth * 0.035; // For date/time, general text, buttons
-    final double smallFontSize = screenWidth * 0.03; // For descriptions, status tags
-
-    // Define responsive icon sizes
-    final double generalIconSize = screenWidth * 0.04; // For calendar, time, location
-    final double sectionIconSize = screenWidth * 0.06; // For people, car icons
+    final double titleFontSize = screenWidth * 0.055;
+    final double appBarTitleFontSize = screenWidth * 0.05;
+    final double subtitleFontSize = screenWidth * 0.04;
+    final double bodyFontSize = screenWidth * 0.035;
+    final double smallFontSize = screenWidth * 0.03;
+    final double generalIconSize = screenWidth * 0.04;
+    final double sectionIconSize = screenWidth * 0.06;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Light grey background
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: AppColors.primaryBlue,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            context.pop();
+            if (!_isNavigating) {
+              setState(() {
+                _isNavigating = true;
+              });
+              context.pop();
+            }
           },
         ),
         title: Text(
           'Event Details',
           style: TextStyle(
             color: Colors.white,
-            fontSize: appBarTitleFontSize, // Responsive App Bar title font size
+            fontSize: appBarTitleFontSize,
             fontWeight: FontWeight.w500,
             fontFamily: 'Poppins',
           ),
@@ -267,465 +273,489 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
+            if (snapshot.error.toString().contains('403') ||
+                snapshot.error.toString().contains('You don\'t have permission')) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!_isNavigating) {
+                  setState(() {
+                    _isNavigating = true;
+                  });
+                  context.go('/home');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('You no longer have access to this event')),
+                  );
+                }
+              });
+              return const Center(child: CircularProgressIndicator());
+            }
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
           final event = snapshot.data!;
           final host = event.host;
-          final Response = event.responses;
+          final responses = event.responses; // Changed variable name to avoid conflict
           final bool isRideNeeded = event.rideNeededForEvent;
+
           return SingleChildScrollView(
             padding: EdgeInsets.all(screenWidth * 0.04),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              // Event Header Card
-              Card(
-              margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.0),
-              ),
-              elevation: 0,
-              color: Colors.white,
-              child: Padding(
-                padding: EdgeInsets.all(screenWidth * 0.04),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      event.title,
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.055,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textDark,
-                        fontFamily: 'Poppins',
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: screenWidth * 0.02),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: screenWidth * 0.03,
-                      runSpacing: screenWidth * 0.015,
+                // Event Header Card
+                Card(
+                  margin: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  elevation: 0,
+                  color: Colors.white,
+                  child: Padding(
+                    padding: EdgeInsets.all(screenWidth * 0.04),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.calendar_month,
-                              size: screenWidth * 0.04,
-                              color: AppColors.primaryBlue,
-                            ),
-                            SizedBox(width: screenWidth * 0.015),
-                            Text(
-                              event.date,
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.035,
-                                color: AppColors.primaryBlue,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.access_time,
-                              size: screenWidth * 0.04,
-                              color: AppColors.primaryBlue,
-                            ),
-                            SizedBox(width: screenWidth * 0.015),
-                            Text(
-                              '${event.startTime} - ${event.endTime}',
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.035,
-                                color: AppColors.primaryBlue,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: screenWidth * 0.02),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on,
-                          size: screenWidth * 0.04,
-                          color: const Color(0xFFF87171),
-                        ),
-                        SizedBox(width: screenWidth * 0.015),
                         Text(
-                          event.location,
+                          event.title,
                           style: TextStyle(
-                            fontSize: screenWidth * 0.035,
-                            color: AppColors.textMedium,
+                            fontSize: titleFontSize,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textDark,
                             fontFamily: 'Poppins',
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: screenWidth * 0.02),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: screenWidth * 0.03,
+                          runSpacing: screenWidth * 0.015,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.calendar_month,
+                                  size: generalIconSize,
+                                  color: AppColors.primaryBlue,
+                                ),
+                                SizedBox(width: screenWidth * 0.015),
+                                Text(
+                                  event.date,
+                                  style: TextStyle(
+                                    fontSize: bodyFontSize,
+                                    color: AppColors.primaryBlue,
+                                    fontFamily: 'Poppins',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.access_time,
+                                  size: generalIconSize,
+                                  color: AppColors.primaryBlue,
+                                ),
+                                SizedBox(width: screenWidth * 0.015),
+                                Text(
+                                  '${event.startTime} - ${event.endTime}',
+                                  style: TextStyle(
+                                    fontSize: bodyFontSize,
+                                    color: AppColors.primaryBlue,
+                                    fontFamily: 'Poppins',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: screenWidth * 0.02),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              size: generalIconSize,
+                              color: const Color(0xFFF87171),
+                            ),
+                            SizedBox(width: screenWidth * 0.015),
+                            Expanded(
+                              child: Text(
+                                event.location,
+                                style: TextStyle(
+                                  fontSize: bodyFontSize,
+                                  color: AppColors.textMedium,
+                                  fontFamily: 'Poppins',
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: screenWidth * 0.04), // Responsive spacing
-            // Host Information Card
-            Card(
-              margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.0),
-              ),
-              elevation: 0,
-              color: Colors.white,
-              child: Padding(
-                  padding: EdgeInsets.all(screenWidth * 0.04),
-                  child: Column(
-                    children: [
-                  Row(
-                  children: [
-                  CircleAvatar(
-                  radius: screenWidth * 0.06, // Adjust size
-                    backgroundImage: NetworkImage(
-                      host.profilePhotoUrl,
-                    ),
-                    onBackgroundImageError: (exception, stackTrace) {
-                      // Handle error if image doesn't load
-                    },
                   ),
-                  SizedBox(width: screenWidth * 0.03),
-                  Expanded(
+                ),
+                SizedBox(height: screenWidth * 0.04),
+                // Host Information Card
+                Card(
+                  margin: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  elevation: 0,
+                  color: Colors.white,
+                  child: Padding(
+                    padding: EdgeInsets.all(screenWidth * 0.04),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: screenWidth * 0.06,
+                              backgroundImage: host.profilePhotoUrl.isNotEmpty
+                                  ? NetworkImage(host.profilePhotoUrl)
+                                  : const AssetImage('assets/images/default_profile_picture.png') as ImageProvider,
+                              onBackgroundImageError: (exception, stackTrace) {
+                                print('Error loading host image: $exception');
+                              },
+                            ),
+                            SizedBox(width: screenWidth * 0.03),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    host.fullName,
+                                    style: TextStyle(
+                                      fontSize: subtitleFontSize,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textDark,
+                                      fontFamily: 'Poppins',
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (host.childrenNames.isNotEmpty)
+                                    Text(
+                                      "${host.childrenNames.join(", ")}'s Parent",
+                                      style: TextStyle(
+                                        fontSize: smallFontSize,
+                                        color: AppColors.textMedium,
+                                        fontFamily: 'Poppins',
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: screenWidth * 0.03),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _isNavigating
+                                    ? null
+                                    : () {
+                                  setState(() {
+                                    _isJoining = true;
+                                  });
+                                  _handleResponse('going', event);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isJoining ? AppColors.goingButtonColor : Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    side: BorderSide(
+                                      color: _isJoining ? AppColors.goingButtonColor : AppColors.inputOutline,
+                                    ),
+                                  ),
+                                  elevation: 0,
+                                  padding: EdgeInsets.symmetric(vertical: screenWidth * 0.03),
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'I\'m Joining',
+                                    style: TextStyle(
+                                      fontSize: bodyFontSize,
+                                      fontWeight: FontWeight.w500,
+                                      color: _isJoining ? Colors.white : AppColors.primaryBlue,
+                                      fontFamily: 'Poppins',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: screenWidth * 0.02),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _isNavigating
+                                    ? null
+                                    : () {
+                                  setState(() {
+                                    _isJoining = false;
+                                  });
+                                  _handleResponse('not_going', event);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: !_isJoining ? AppColors.notGoingButtonColor : Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    side: BorderSide(
+                                      color: !_isJoining ? AppColors.notGoingButtonColor : AppColors.inputOutline,
+                                    ),
+                                  ),
+                                  elevation: 0,
+                                  padding: EdgeInsets.symmetric(vertical: screenWidth * 0.03),
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'Decline',
+                                    style: TextStyle(
+                                      fontSize: bodyFontSize,
+                                      fontWeight: FontWeight.w500,
+                                      color: !_isJoining ? Colors.white : const Color(0xFFF87171),
+                                      fontFamily: 'Poppins',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: screenWidth * 0.04),
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: screenWidth * 0.02),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        flex: 3,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.people,
+                              size: generalIconSize,
+                              color: const Color(0xFF5A8DEE),
+                            ),
+                            SizedBox(width: screenWidth * 0.01),
+                            Flexible(
+                              child: Text(
+                                'Who\'s Joining',
+                                style: TextStyle(
+                                  fontSize: subtitleFontSize,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textDark,
+                                  fontFamily: 'Poppins',
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            SizedBox(width: screenWidth * 0.02),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenWidth * 0.015,
+                                vertical: screenWidth * 0.008,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.lightBlueBackground,
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              child: Text(
+                                '${event.goingCount} Going',
+                                style: TextStyle(
+                                  fontSize: smallFontSize,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.primaryBlue,
+                                  fontFamily: 'Poppins',
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: responses.length,
+                  itemBuilder: (context, index) {
+                    return _buildParticipantTile(context, responses[index], host);
+                  },
+                ),
+                SizedBox(height: screenWidth * 0.04),
+                if (isRideNeeded) ...[
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: screenWidth * 0.02),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.directions_car_outlined,
+                          size: sectionIconSize,
+                          color: AppColors.primaryBlue,
+                        ),
+                        SizedBox(width: screenWidth * 0.02),
+                        Expanded(
+                          child: Text(
+                            'Ride Requests',
+                            style: TextStyle(
+                              fontSize: subtitleFontSize,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textDark,
+                              fontFamily: 'Poppins',
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Card(
+                    margin: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                      side: BorderSide(
+                        color: AppColors.rideRequestCardBorder,
+                        width: 1,
+                      ),
+                    ),
+                    elevation: 0,
+                    color: AppColors.rideRequestCardBackground,
+                    child: Padding(
+                      padding: EdgeInsets.all(screenWidth * 0.04),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                        Text(
-                        host.fullName,
-                        style: TextStyle(
-                          fontSize: subtitleFontSize,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textDark,
-                          fontFamily: 'Poppins',
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              Image(
+                                image: const AssetImage('assets/images/3d-house.png'),
+                                height: screenWidth * 0.05,
+                                width: screenWidth * 0.05,
+                              ),
+                              SizedBox(width: screenWidth * 0.02),
+                              Expanded(
+                                child: Text(
+                                  'Available for ride home',
+                                  style: TextStyle(
+                                    fontSize: bodyFontSize,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textDark,
+                                    fontFamily: 'Poppins',
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: screenWidth * 0.02),
+                          SizedBox(
+                            width: double.infinity,
+                            height: screenWidth * 0.1,
+                            child: ElevatedButton(
+                              onPressed: _isNavigating
+                                  ? null
+                                  : () {
+                                sendRideRequest(
+                                  event.id,
+                                  'lol',
+                                  'string',
+                                  context,
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.requestRideButtonColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.0),
+                                ),
+                                elevation: 0,
+                                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'Send Request Ride',
+                                  style: TextStyle(
+                                    fontSize: bodyFontSize,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.requestRideButtonTextColor,
+                                    fontFamily: 'Poppins',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: screenWidth * 0.02),
+                          SizedBox(
+                            width: double.infinity,
+                            height: screenWidth * 0.1,
+                            child: ElevatedButton(
+                              onPressed: _isNavigating
+                                  ? null
+                                  : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => RideSharingPage(
+                                      eventId: event.id,
+                                      eventdate: event.date,
+                                      eventstartTime: event.startTime,
+                                      eventendTime: event.endTime,
+                                      eventlocation: event.location,
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.requestRideButtonColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.0),
+                                ),
+                                elevation: 0,
+                                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'Request Ride List',
+                                  style: TextStyle(
+                                    fontSize: bodyFontSize,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.requestRideButtonTextColor,
+                                    fontFamily: 'Poppins',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      if (host.childrenNames.isNotEmpty)
-                  Text(
-              host.childrenNames.join(", ") + "'s Parent",
-            style: TextStyle(
-            fontSize: smallFontSize,
-              color: AppColors.textMedium,
-              fontFamily: 'Poppins',
+                    ),
+                  ),
+                ],
+                SizedBox(height: screenWidth * 0.05),
+              ],
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          ],
-          ),
-          ),
-          ],
-          ),
-          SizedBox(height: screenWidth * 0.03),
-          Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-          Expanded(
-          child: ElevatedButton(
-          onPressed: () {
-          setState(() {
-          _isJoining = true;
-          });
-          _handleResponse('going', snapshot.data!);
-          },
-          style: ElevatedButton.styleFrom(
-          backgroundColor: _isJoining ? AppColors.goingButtonColor : Colors.white,
-          shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-          side: BorderSide(
-          color: _isJoining ? AppColors.goingButtonColor : AppColors.inputOutline,
-          ),
-          ),
-          elevation: 0,
-          padding: EdgeInsets.symmetric(vertical: screenWidth * 0.03),
-          ),
-          child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-          'I\'m Joining',
-          style: TextStyle(
-          fontSize: bodyFontSize,
-          fontWeight: FontWeight.w500,
-          color: _isJoining ? Colors.white : AppColors.primaryBlue,
-          fontFamily: 'Poppins',
-          ),
-          ),
-          ),
-          ),
-          ),
-          SizedBox(width: screenWidth * 0.02),
-          Expanded(
-          child: ElevatedButton(
-          onPressed: () {
-          setState(() {
-          _isJoining = false;
-          });
-          _handleResponse('not_going', snapshot.data!);
-          },
-          style: ElevatedButton.styleFrom(
-          backgroundColor: !_isJoining ? AppColors.notGoingButtonColor : Colors.white,
-          shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-          side: BorderSide(
-          color: !_isJoining ? AppColors.notGoingButtonColor : AppColors.inputOutline,
-          ),
-          ),
-          elevation: 0,
-          padding: EdgeInsets.symmetric(vertical: screenWidth * 0.03),
-          ),
-          child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-          'Decline',
-          style: TextStyle(
-          fontSize: bodyFontSize,
-          fontWeight: FontWeight.w500,
-          color: !_isJoining ? Colors.white : const Color(0xFFF87171),
-          fontFamily: 'Poppins',
-          ),
-          ),
-          ),
-          ),
-          ),
-          ],
-          ),
-          ],
-          ),
-          ),
-          ),
-          SizedBox(height: screenWidth * 0.04),
-          Padding(
-          padding: EdgeInsets.symmetric(vertical: screenWidth * 0.02),
-          child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-          Flexible(
-          flex: 3,
-          child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-          Icon(
-          Icons.people,
-          size: generalIconSize,
-          color: const Color(0xFF5A8DEE),
-          ),
-          SizedBox(width: screenWidth * 0.01),
-          Flexible(
-          child: Text(
-          'Who\'s Joining',
-          style: TextStyle(
-          fontSize: subtitleFontSize,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textDark,
-          fontFamily: 'Poppins',
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          ),
-          ),
-          SizedBox(width: screenWidth * 0.02),
-          Container(
-          padding: EdgeInsets.symmetric(
-          horizontal: screenWidth * 0.015,
-          vertical: screenWidth * 0.008,
-          ),
-          decoration: BoxDecoration(
-          color: AppColors.lightBlueBackground,
-          borderRadius: BorderRadius.circular(8.0),
-          ),
-          child: Text(
-          '${event.goingCount} Going',
-          style: TextStyle(
-          fontSize: smallFontSize,
-          fontWeight: FontWeight.w500,
-          color: AppColors.primaryBlue,
-          fontFamily: 'Poppins',
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          ),
-          ),
-          ],
-          ),
-          ),
-          SizedBox(width: screenWidth * 0.02),
-          ],
-          ),
-          ),
-          ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: Response.length,
-          itemBuilder: (context, index) {
-          return _buildParticipantTile(context, Response[index], host);
-          },
-          ),
-          SizedBox(height: screenWidth * 0.04),
-          if (isRideNeeded) ...[
-          Padding(
-          padding: EdgeInsets.symmetric(vertical: screenWidth * 0.02),
-          child: Row(
-          children: [
-          Icon(
-          Icons.directions_car_outlined,
-          size: sectionIconSize,
-          color: AppColors.primaryBlue,
-          ),
-          SizedBox(width: screenWidth * 0.02),
-          Expanded(
-          child: Text(
-          'Ride Requests',
-          style: TextStyle(
-          fontSize: subtitleFontSize,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textDark,
-          fontFamily: 'Poppins',
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          ),
-          ),
-          ],
-          ),
-          ),
-          Card(
-          margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          side: BorderSide(
-          color: AppColors.rideRequestCardBorder,
-          width: 1,
-          ),
-          ),
-          elevation: 0,
-          color: AppColors.rideRequestCardBackground,
-          child: Padding(
-          padding: EdgeInsets.all(screenWidth * 0.04),
-          child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-          Row(
-          children: [
-          Image(
-          image: const AssetImage('assets/images/3d-house.png'),
-          height: screenWidth * 0.05,
-          width: screenWidth * 0.05,
-          ),
-          SizedBox(width: screenWidth * 0.02),
-          Expanded(
-          child: Text(
-          'Available for ride home',
-          style: TextStyle(
-          fontSize: bodyFontSize,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textDark,
-          fontFamily: 'Poppins',
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          ),
-          ),
-          ],
-          ),
-          SizedBox(height: screenWidth * 0.02),
-          SizedBox(
-          width: double.infinity,
-          height: screenWidth * 0.1,
-          child: ElevatedButton(
-          onPressed: () {
-          sendRideRequest(
-          event.id,
-          'lol',
-          'string',
-          context,
-          );
-          },
-          style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.requestRideButtonColor,
-          shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-          ),
-          elevation: 0,
-          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
-          ),
-          child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-          'Send Request Ride',
-          style: TextStyle(
-          fontSize: bodyFontSize,
-          fontWeight: FontWeight.w600,
-          color: AppColors.requestRideButtonTextColor,
-          fontFamily: 'Poppins',
-          ),
-          ),
-          ),
-          ),
-          ),
-          SizedBox(height: screenWidth * 0.02),
-          SizedBox(
-          width: double.infinity,
-          height: screenWidth * 0.1,
-          child: ElevatedButton(
-          onPressed: () {
-          print(event.id);
-          Navigator.push(
-          context,
-          MaterialPageRoute(
-          builder: (context) => RideSharingPage(
-          eventId: event.id,
-          eventdate: event.date,
-          eventstartTime: event.startTime,
-          eventendTime: event.endTime,
-          eventlocation: event.location,
-          ),
-          ),
-          );
-          },
-          style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.requestRideButtonColor,
-          shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-          ),
-          elevation: 0,
-          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
-          ),
-          child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-          'Request Ride List',
-          style: TextStyle(
-          fontSize: bodyFontSize,
-          fontWeight: FontWeight.w600,
-          color: AppColors.requestRideButtonTextColor,
-          fontFamily: 'Poppins',
-          ),
-          ),
-          ),
-          ),
-          ),
-          ],
-          ),
-          ),
-          ),
-          ],
-          SizedBox(height: screenWidth * 0.05),
-          ],
-          ),
           );
         },
       ),
@@ -779,7 +809,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
         final errorData = jsonDecode(response.body);
         final errorMessage = errorData['detail'] ?? response.body;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send request: \n$errorMessage')),
+          SnackBar(content: Text('Failed to send request: $errorMessage')),
         );
       }
     } catch (error) {
@@ -807,20 +837,20 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     }
 
     Color statusColor;
-    Color statusTestColor;
+    Color statusTextColor;
     switch (participantStatus) {
       case 'Going':
         statusColor = const Color(0x8036D399);
-        statusTestColor = const Color(0xCC1B1D2A);
+        statusTextColor = const Color(0xCC1B1D2A);
         break;
       case 'Not Going':
         statusColor = const Color(0x80F87171);
-        statusTestColor = const Color(0xCC1B1D2A);
+        statusTextColor = const Color(0xCC1B1D2A);
         break;
       case 'Host':
       default:
         statusColor = const Color(0xFF36D399);
-        statusTestColor = const Color(0xFF1B1D2A);
+        statusTextColor = const Color(0xFF1B1D2A);
         break;
     }
 
@@ -837,7 +867,10 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
               radius: participantAvatarRadius,
               backgroundImage: response.profilePhotoUrl.isNotEmpty
                   ? NetworkImage(response.profilePhotoUrl)
-                  : AssetImage('assets/images/default_profile_picture.png'),
+                  : const AssetImage('assets/images/default_profile_picture.png') as ImageProvider,
+              onBackgroundImageError: (exception, stackTrace) {
+                print('Error loading participant image: $exception');
+              },
             ),
             SizedBox(width: screenWidth * 0.03),
             Expanded(
@@ -857,7 +890,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
                   ),
                   if (response.childrenNames.isNotEmpty)
                     Text(
-                      response.childrenNames.join(", ") + "'s Parents",
+                      "${response.childrenNames.join(", ")}'s Parents",
                       style: TextStyle(
                         fontSize: participantDescFontSize,
                         color: AppColors.textMedium,
@@ -883,7 +916,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
                 style: TextStyle(
                   fontSize: statusTagFontSize,
                   fontWeight: FontWeight.w500,
-                  color: statusTestColor,
+                  color: statusTextColor,
                   fontFamily: 'Poppins',
                 ),
                 maxLines: 1,

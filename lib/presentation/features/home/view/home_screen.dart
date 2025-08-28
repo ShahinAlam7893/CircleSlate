@@ -1217,7 +1217,6 @@ import '../../../../presentation/common_providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../widgets/calendar_part.dart';
-import '../widgets/defult_group_section.dart';
 import '../widgets/my_group_section.dart';
 
 class NotificationIconWithBadge extends StatefulWidget {
@@ -2163,7 +2162,7 @@ class _HomePageState extends State<HomePage> {
 
                   // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-                  // Calendar Section
+
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: CalendarPart(),
@@ -2289,7 +2288,7 @@ class _HomePageState extends State<HomePage> {
       2025,
       6,
       29,
-    ); // Start from the Sunday before July 1st
+    );
 
     for (int i = 0; i < 35; i++) {
       // Display 5 weeks (7 days * 5 rows = 35 days)

@@ -1,268 +1,17 @@
-// import 'package:flutter/material.dart';
-// import 'package:intl/intl.dart'; // For date formatting
-// import 'package:provider/provider.dart';
-// import '../../../core/constants/app_colors.dart';
-// import '../../../presentation/common_providers/availability_provider.dart';
-// import '../../../presentation/common_providers/user_events_provider.dart'; // Import UserEventsProvider
-//
-// class CalendarPart extends StatefulWidget {
-//   const CalendarPart({Key? key}) : super(key: key);
-//
-//   @override
-//   State<CalendarPart> createState() => _CalendarPartState();
-// }
-//
-// class _CalendarPartState extends State<CalendarPart> {
-//   int _currentMonth = DateTime.now().month;
-//   int _currentYear = DateTime.now().year;
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//     WidgetsBinding.instance.addPostFrameCallback((_) {
-//       Provider.of<AvailabilityProvider>(context, listen: false)
-//           .fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth);
-//       Provider.of<UserEventsProvider>(context, listen: false)
-//           .fetchGoingEvents(context); // Pass context
-//     });
-//   }
-//
-//   void _goToNextMonth() {
-//     setState(() {
-//       if (_currentMonth == 12) {
-//         _currentMonth = 1;
-//         _currentYear++;
-//       } else {
-//         _currentMonth++;
-//       }
-//     });
-//     Provider.of<AvailabilityProvider>(context, listen: false)
-//         .fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth);
-//     Provider.of<UserEventsProvider>(context, listen: false)
-//         .fetchGoingEvents(context); // Pass context
-//   }
-//
-//   void _goToPreviousMonth() {
-//     setState(() {
-//       if (_currentMonth == 1) {
-//         _currentMonth = 12;
-//         _currentYear--;
-//       } else {
-//         _currentMonth--;
-//       }
-//     });
-//     Provider.of<AvailabilityProvider>(context, listen: false)
-//         .fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth);
-//     Provider.of<UserEventsProvider>(context, listen: false)
-//         .fetchGoingEvents(context); // Pass context
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     final provider = Provider.of<AvailabilityProvider>(context);
-//     final userEventsProvider = Provider.of<UserEventsProvider>(context);
-//
-//     // Generate calendar dates
-//     final daysInMonth = DateTime(_currentYear, _currentMonth + 1, 0).day;
-//     final firstDayOfMonth = DateTime(_currentYear, _currentMonth, 1);
-//     final startDayOffset = firstDayOfMonth.weekday % 7;
-//
-//     List<DateTime> calendarDates = [];
-//
-//     // Previous month days
-//     for (int i = 0; i < startDayOffset; i++) {
-//       calendarDates.add(
-//           firstDayOfMonth.subtract(Duration(days: startDayOffset - i)));
-//     }
-//
-//     // Current month days
-//     for (int i = 1; i <= daysInMonth; i++) {
-//       calendarDates.add(DateTime(_currentYear, _currentMonth, i));
-//     }
-//
-//     // Next month days
-//     while (calendarDates.length % 7 != 0) {
-//       final lastDate = calendarDates.last;
-//       calendarDates.add(lastDate.add(const Duration(days: 1)));
-//     }
-//
-//     final screenWidth = MediaQuery.of(context).size.width;
-//     final double weekdayFontSize = screenWidth * 0.035;
-//     final double dateNumberFontSize = screenWidth * 0.04;
-//     final double cellSpacing = screenWidth * 0.01;
-//     final double borderRadius = screenWidth * 0.02;
-//
-//     final List<String> weekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-//
-//     return Column(
-//       children: [
-//         // Month navigation
-//         Row(
-//           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//           children: [
-//             IconButton(
-//               icon: const Icon(Icons.arrow_back_ios),
-//               onPressed: _goToPreviousMonth,
-//             ),
-//             Text(
-//               '${DateTime(_currentYear, _currentMonth).monthName} $_currentYear',
-//               style: const TextStyle(
-//                   fontSize: 18, fontWeight: FontWeight.bold),
-//             ),
-//             IconButton(
-//               icon: const Icon(Icons.arrow_forward_ios),
-//               onPressed: _goToNextMonth,
-//             ),
-//           ],
-//         ),
-//         SizedBox(height: screenWidth * 0.02),
-//
-//         // Weekday labels
-//         GridView.builder(
-//           shrinkWrap: true,
-//           physics: const NeverScrollableScrollPhysics(),
-//           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-//             crossAxisCount: 7,
-//             childAspectRatio: 1.0,
-//             crossAxisSpacing: cellSpacing,
-//             mainAxisSpacing: cellSpacing,
-//           ),
-//           itemCount: weekdays.length,
-//           itemBuilder: (context, index) {
-//             return Center(
-//               child: Text(
-//                 weekdays[index],
-//                 style: TextStyle(
-//                   fontWeight: FontWeight.bold,
-//                   fontSize: weekdayFontSize,
-//                   color: AppColors.textColorPrimary,
-//                 ),
-//               ),
-//             );
-//           },
-//         ),
-//         SizedBox(height: screenWidth * 0.02),
-//
-//         // Calendar grid
-//         GridView.builder(
-//           shrinkWrap: true,
-//           physics: const NeverScrollableScrollPhysics(),
-//           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-//             crossAxisCount: 7,
-//             childAspectRatio: 1.0,
-//             crossAxisSpacing: cellSpacing,
-//             mainAxisSpacing: cellSpacing,
-//           ),
-//           itemCount: calendarDates.length,
-//           itemBuilder: (context, index) {
-//             final date = calendarDates[index];
-//             final bool isCurrentMonth =
-//                 date.month == _currentMonth && date.year == _currentYear;
-//             final formattedDate = DateFormat('yyyy-MM-dd').format(date);
-//
-//             final state = isCurrentMonth
-//                 ? provider.calendarDateStates[date.day] ?? 2
-//                 : 2;
-//
-//             Color bgColor;
-//             Color textColor;
-//             Color borderColor = Colors.transparent; // Default border color
-//
-//             if (isCurrentMonth) {
-//               switch (state) {
-//                 case 0:
-//                   bgColor = AppColors.unavailableRed;
-//                   textColor = Colors.white;
-//                   borderColor = AppColors.unavailableRed;
-//                   break;
-//                 case 1:
-//                   bgColor = AppColors.availableGreen;
-//                   textColor = Colors.white;
-//                   borderColor = AppColors.availableGreen;
-//                   break;
-//                 default:
-//                   bgColor = AppColors.dateBackground;
-//                   textColor = AppColors.dateText;
-//                   borderColor = AppColors.dateBackground;
-//                   break;
-//               }
-//             } else {
-//               bgColor = AppColors.dateBackground.withOpacity(0.5);
-//               textColor = AppColors.dateText.withOpacity(0.5);
-//               borderColor = AppColors.dateBackground.withOpacity(0.5);
-//             }
-//
-//             final hasGoingEvent = userEventsProvider.goingEventDates.contains(formattedDate);
-//
-//             return GestureDetector(
-//               onTap: isCurrentMonth
-//                   ? () {
-//                 provider.toggleDateState(date.day);
-//               }
-//                   : null,
-//               child: Stack(
-//                 alignment: Alignment.center,
-//                 children: [
-//                   Container(
-//                     decoration: BoxDecoration(
-//                       color: bgColor,
-//                       border: Border.all(color: borderColor, width: 1.5),
-//                       borderRadius: BorderRadius.circular(borderRadius),
-//                     ),
-//                     child: Center(
-//                       child: Text(
-//                         '${date.day}',
-//                         style: TextStyle(
-//                           color: textColor,
-//                           fontWeight: FontWeight.bold,
-//                           fontSize: dateNumberFontSize,
-//                         ),
-//                       ),
-//                     ),
-//                   ),
-//                   if (hasGoingEvent && isCurrentMonth)
-//                     Positioned(
-//                       bottom: screenWidth * 0.005,
-//                       right: screenWidth * 0.005,
-//                       child: Icon(
-//                         Icons.bookmark_add,
-//                         size: screenWidth * 0.05,
-//                         color: AppColors.primaryBlue, // Consistent with app theme
-//                       ),
-//                     ),
-//                 ],
-//               ),
-//             );
-//           },
-//         ),
-//       ],
-//     );
-//   }
-//
-// }
-//
-// extension MonthName on DateTime {
-//   String get monthName {
-//     const months = [
-//       'January', 'February', 'March', 'April', 'May', 'June',
-//       'July', 'August', 'September', 'October', 'November', 'December'
-//     ];
-//     return months[month - 1];
-//   }
-// }
-
-
-
-
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // For date formatting
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../presentation/common_providers/availability_provider.dart';
-import '../../../presentation/common_providers/user_events_provider.dart'; // Import UserEventsProvider
+import '../../../presentation/common_providers/user_events_provider.dart';
+import '../features/group_management/view/day_details_dialog.dart';
 
 class CalendarPart extends StatefulWidget {
-  const CalendarPart({Key? key}) : super(key: key);
+  final String? userId;
+  final String? userName;
+  final bool isReadOnly;
+
+  const CalendarPart({Key? key, this.userId, this.isReadOnly = true, this.userName}) : super(key: key);
 
   @override
   State<CalendarPart> createState() => _CalendarPartState();
@@ -275,13 +24,27 @@ class _CalendarPartState extends State<CalendarPart> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AvailabilityProvider>(context, listen: false)
-          .fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth);
-      Provider.of<UserEventsProvider>(context, listen: false)
-          .fetchGoingEvents(context); // Pass context
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
+      final eventsProvider = Provider.of<UserEventsProvider>(context, listen: false);
+      availabilityProvider.resetCalendarData();
+
+
+      if (widget.userId != null) {
+        availabilityProvider.setSelectedUserId(widget.userId!);
+        eventsProvider.setSelectedUserId(widget.userId!);
+        print('CalendarPart: Set selectedUserId to ${widget.userId}');
+      } else {
+        availabilityProvider.setSelectedUserId('');
+        eventsProvider.setSelectedUserId('');
+        print('CalendarPart: Viewing current user\'s calendar');
+      }
+
+      await availabilityProvider.fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth);
+      await eventsProvider.fetchGoingEvents(context, userId: widget.userId);
     });
   }
+
 
   void _goToNextMonth() {
     setState(() {
@@ -292,10 +55,7 @@ class _CalendarPartState extends State<CalendarPart> {
         _currentMonth++;
       }
     });
-    Provider.of<AvailabilityProvider>(context, listen: false)
-        .fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth);
-    Provider.of<UserEventsProvider>(context, listen: false)
-        .fetchGoingEvents(context); // Pass context
+    _fetchMonthData();
   }
 
   void _goToPreviousMonth() {
@@ -307,39 +67,172 @@ class _CalendarPartState extends State<CalendarPart> {
         _currentMonth--;
       }
     });
-    Provider.of<AvailabilityProvider>(context, listen: false)
-        .fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth);
-    Provider.of<UserEventsProvider>(context, listen: false)
-        .fetchGoingEvents(context); // Pass context
+    _fetchMonthData();
+  }
+
+  void _fetchMonthData() {
+    final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
+    final eventsProvider = Provider.of<UserEventsProvider>(context, listen: false);
+
+    availabilityProvider.resetCalendarData();
+
+    if (widget.userId != null) {
+      availabilityProvider.setSelectedUserId(widget.userId!);
+      eventsProvider.setSelectedUserId(widget.userId!);
+    } else {
+      availabilityProvider.setSelectedUserId('');
+      eventsProvider.setSelectedUserId('');
+    }
+
+    availabilityProvider.fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth);
+    eventsProvider.fetchGoingEvents(context, userId: widget.userId);
+  }
+
+
+
+  void _onDateTap(DateTime date) async {
+    final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
+
+    // If not read-only and current month, allow editing
+    if (!widget.isReadOnly &&
+        date.month == _currentMonth &&
+        date.year == _currentYear) {
+      availabilityProvider.toggleDateState(date.day);
+      return;
+    }
+
+    // For read-only or viewing details, show day details dialog
+    await _showDayDetails(date);
+  }
+
+  Future<void> _showDayDetails(DateTime date) async {
+    final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
+
+    // Show loading dialog first
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text("Loading day details..."),
+            ],
+          ),
+        );
+      },
+    );
+
+    // Fetch day details
+    await availabilityProvider.fetchDayDetails(date);
+
+    // Close loading dialog
+    Navigator.of(context).pop();
+
+    // Show day details dialog
+    if (availabilityProvider.dayDetailsError != null) {
+      // Show error dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text("Error"),
+            content: Text(availabilityProvider.dayDetailsError!),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text("OK"),
+              ),
+            ],
+          );
+        },
+      );
+    } else if (availabilityProvider.selectedDayDetails != null) {
+      // Show day details
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return DayDetailsDialog(
+            dayDetails: availabilityProvider.selectedDayDetails!,
+            userName: widget.userName,
+            isCurrentUser: widget.userId == null,
+          );
+        },
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<AvailabilityProvider>(context);
+    final availabilityProvider = Provider.of<AvailabilityProvider>(context);
     final userEventsProvider = Provider.of<UserEventsProvider>(context);
 
-    // Generate calendar dates
+    if (availabilityProvider.isLoading || userEventsProvider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (availabilityProvider.errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Error: ${availabilityProvider.errorMessage}',
+              style: const TextStyle(color: Colors.red, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchMonthData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (userEventsProvider.errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Error: ${userEventsProvider.errorMessage}',
+              style: const TextStyle(color: Colors.red, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchMonthData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+
     final daysInMonth = DateTime(_currentYear, _currentMonth + 1, 0).day;
     final firstDayOfMonth = DateTime(_currentYear, _currentMonth, 1);
     final startDayOffset = firstDayOfMonth.weekday % 7;
 
     List<DateTime> calendarDates = [];
 
-    // Previous month days
+    // Previous month dates
     for (int i = 0; i < startDayOffset; i++) {
-      calendarDates.add(
-          firstDayOfMonth.subtract(Duration(days: startDayOffset - i)));
+      calendarDates.add(firstDayOfMonth.subtract(Duration(days: startDayOffset - i)));
     }
 
-    // Current month days
+    // Current month dates
     for (int i = 1; i <= daysInMonth; i++) {
       calendarDates.add(DateTime(_currentYear, _currentMonth, i));
     }
 
-    // Next month days
+    // Fill remaining to make full weeks
     while (calendarDates.length % 7 != 0) {
-      final lastDate = calendarDates.last;
-      calendarDates.add(lastDate.add(const Duration(days: 1)));
+      calendarDates.add(calendarDates.last.add(const Duration(days: 1)));
     }
 
     final screenWidth = MediaQuery.of(context).size.width;
@@ -352,23 +245,13 @@ class _CalendarPartState extends State<CalendarPart> {
 
     return Column(
       children: [
-        // Month navigation
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back_ios),
-              onPressed: _goToPreviousMonth,
-            ),
-            Text(
-              '${DateTime(_currentYear, _currentMonth).monthName} $_currentYear',
-              style: const TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            IconButton(
-              icon: const Icon(Icons.arrow_forward_ios),
-              onPressed: _goToNextMonth,
-            ),
+            IconButton(icon: const Icon(Icons.arrow_back_ios), onPressed: _goToPreviousMonth),
+            Text('${DateTime(_currentYear, _currentMonth).monthName} $_currentYear',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            IconButton(icon: const Icon(Icons.arrow_forward_ios), onPressed: _goToNextMonth),
           ],
         ),
         SizedBox(height: screenWidth * 0.02),
@@ -384,18 +267,16 @@ class _CalendarPartState extends State<CalendarPart> {
             mainAxisSpacing: cellSpacing,
           ),
           itemCount: weekdays.length,
-          itemBuilder: (context, index) {
-            return Center(
-              child: Text(
-                weekdays[index],
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: weekdayFontSize,
-                  color: AppColors.textColorPrimary,
-                ),
+          itemBuilder: (context, index) => Center(
+            child: Text(
+              weekdays[index],
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: weekdayFontSize,
+                color: AppColors.textColorPrimary,
               ),
-            );
-          },
+            ),
+          ),
         ),
         SizedBox(height: screenWidth * 0.02),
 
@@ -412,53 +293,48 @@ class _CalendarPartState extends State<CalendarPart> {
           itemCount: calendarDates.length,
           itemBuilder: (context, index) {
             final date = calendarDates[index];
-            final bool isCurrentMonth =
-                date.month == _currentMonth && date.year == _currentYear;
+            final bool isCurrentMonth = date.month == _currentMonth && date.year == _currentYear;
             final formattedDate = DateFormat('yyyy-MM-dd').format(date);
 
             final state = isCurrentMonth
-                ? provider.calendarDateStates[date.day] ?? 2
+                ? availabilityProvider.calendarDateStates[date.day] ?? 2
                 : 2;
 
             Color bgColor;
             Color textColor;
-            Color borderColor = Colors.transparent; // Default border color
-            Color? blobColor; // Color for the availability blob
+            Color borderColor = Colors.transparent;
+            Color? blobColor;
 
             if (isCurrentMonth) {
               switch (state) {
-                case 0: // Unavailable
+                case 0:
                   blobColor = AppColors.unavailableRed;
                   textColor = AppColors.dateText;
                   borderColor = AppColors.dateBackground;
                   break;
-                case 1: // Available
+                case 1:
                   blobColor = AppColors.availableGreen;
                   textColor = AppColors.dateText;
                   borderColor = AppColors.dateBackground;
                   break;
-                default: // No availability set
-                  blobColor = null; // No blob for default state
+                default:
+                  blobColor = null;
                   textColor = AppColors.dateText;
                   borderColor = AppColors.dateBackground;
                   break;
               }
-              bgColor = AppColors.dateBackground; // Always use default background for current month
+              bgColor = AppColors.dateBackground;
             } else {
               bgColor = AppColors.dateBackground.withOpacity(0.5);
               textColor = AppColors.dateText.withOpacity(0.5);
               borderColor = AppColors.dateBackground.withOpacity(0.5);
-              blobColor = null; // No blob for non-current months
+              blobColor = null;
             }
 
             final hasGoingEvent = userEventsProvider.goingEventDates.contains(formattedDate);
 
             return GestureDetector(
-              onTap: isCurrentMonth
-                  ? () {
-                provider.toggleDateState(date.day);
-              }
-                  : null,
+              onTap: () => _onDateTap(date),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -479,27 +355,24 @@ class _CalendarPartState extends State<CalendarPart> {
                       ),
                     ),
                   ),
-                  if (blobColor != null && isCurrentMonth)
+                  if (blobColor != null)
                     Positioned(
                       top: screenWidth * 0.005,
                       left: screenWidth * 0.005,
                       child: Container(
-                        width: screenWidth * 0.02, // Small blob size
+                        width: screenWidth * 0.02,
                         height: screenWidth * 0.02,
-                        decoration: BoxDecoration(
-                          color: blobColor,
-                          shape: BoxShape.circle,
-                        ),
+                        decoration: BoxDecoration(color: blobColor, shape: BoxShape.circle),
                       ),
                     ),
-                  if (hasGoingEvent && isCurrentMonth)
+                  if (hasGoingEvent)
                     Positioned(
                       bottom: screenWidth * 0.005,
                       right: screenWidth * 0.005,
                       child: Icon(
                         Icons.bookmark_add,
-                        size: screenWidth * 0.05,
-                        color: AppColors.primaryBlue, // Consistent with app theme
+                        size: screenWidth * 0.04,
+                        color: AppColors.primaryBlue,
                       ),
                     ),
                 ],

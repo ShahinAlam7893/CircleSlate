@@ -24,15 +24,26 @@ class _AvailabilityPreviewPageState extends State<AvailabilityPreviewPage> {
 
   Future<void> _loadAvailability() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('accessToken') ?? '';
-    if (token.isNotEmpty) {
-      await Provider.of<AvailabilityProvider>(
-        context,
-        listen: false,
-      ).fetchAvailabilityFromAPI(token);
+    final token = prefs.getString('accessToken');
+
+    if (token != null && token.isNotEmpty) {
+      final provider = Provider.of<AvailabilityProvider>(context, listen: false);
+
+      if (provider.selectedUserId != null) {
+        // Fetch availability for the selected user
+        await provider.fetchAvailabilityForUser(provider.selectedUserId!);
+      } else {
+        // Fallback: fetch own availability
+        await provider.fetchMonthAvailabilityFromAPI(
+          DateTime.now().year,
+          DateTime.now().month,
+        );
+      }
     }
+
     setState(() => _isLoading = false);
   }
+
 
   String _getStatusText(int status) {
     switch (status) {

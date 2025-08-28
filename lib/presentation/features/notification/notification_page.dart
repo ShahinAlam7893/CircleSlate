@@ -386,9 +386,9 @@ class _NotificationPageState extends State<NotificationPage> {
       final notifications = await _notificationService.fetchNotifications(limit: 5101);
       debugPrint("📦 [NotificationPage] Notifications fetched: ${notifications.length}");
 
-      for (var n in notifications) {
-        debugPrint("   → Notification ID=${n.id}, title=${n.title}, eventId=${n.eventId}");
-      }
+      // for (var n in notifications) {
+      //   debugPrint("   → Notification ID=${n.id}, title=${n.title}, eventId=${n.eventId}");
+      // }
 
       setState(() {
         _notifications = notifications;
@@ -407,7 +407,7 @@ class _NotificationPageState extends State<NotificationPage> {
 
   void _handleNotificationTap(AppNotification notification) async {
     debugPrint("👆 [NotificationPage] Tapped notification → "
-        "id=${notification.id}, title=${notification.title}, eventId=${notification.eventId}");
+        "id=${notification.id}, title=${notification.title}, eventId=${notification.eventId}, name=${notification.conversationName}, group or not=${notification.isGroupChat}");
 
     if (!notification.isRead) {
       await _notificationService.markAsRead(notification.id);
@@ -417,7 +417,6 @@ class _NotificationPageState extends State<NotificationPage> {
     }
 
     if (notification.eventId != null) {
-      // Handle direct invite notification: redirect to event details page
       context.push(
         '${RoutePaths.eventDetails}/${notification.eventId}',
         extra: {
@@ -434,14 +433,16 @@ class _NotificationPageState extends State<NotificationPage> {
       //   },
       // );
 
-    } else if (notification.conversationId != null) {
-      if (notification.isGroupChat) {
+    }
+
+    else if (notification.conversationId != null) {
+      if (!notification.isGroupChat) {
         context.push(
           '/group_conversation',
           extra: {
             'conversationId': notification.conversationId,
             'groupName': notification.conversationName ?? notification.title,
-            'currentUserId': 'currentUserId', // replace with actual
+            'currentUserId': 'currentUserId',
             'isGroupChat': true,
           },
         );
@@ -451,8 +452,8 @@ class _NotificationPageState extends State<NotificationPage> {
           extra: {
             'conversationId': notification.conversationId,
             'chatPartnerId': notification.chatPartnerId ?? '',
-            'chatPartnerName': notification.chatPartnerName ?? notification.title, // or get from sender
-            'currentUserId': 'currentUserId', // replace with actual
+            'chatPartnerName': notification.chatPartnerName ?? notification.title,
+            'currentUserId': 'currentUserId',
             'isGroupChat': false,
           },
         );
@@ -469,7 +470,7 @@ class _NotificationPageState extends State<NotificationPage> {
         backgroundColor: AppColors.buttonPrimary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pushReplacement('/home'), // Use pushReplacement to avoid going back to this page
+          onPressed: () => context.pushReplacement('/home'),
         ),
       ),
       body: _loading

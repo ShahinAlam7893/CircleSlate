@@ -4,10 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../data/models/group_model.dart';
-import '../../network/endpoints.dart';
 
 class GroupConversationManager {
-  static const String baseUrl = '${Urls.baseUrl}chat';
+  static const String baseUrl = 'http://10.10.13.27:8000/api/chat';
 
   static Future<GroupChat> createGroupConversation(
       String currentUserId,

@@ -35,7 +35,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     debugPrint('[CreateGroupPage] Initialized with currentUserId: ${widget.currentUserId}');
     debugPrint('[CreateGroupPage] currentUserId length: ${widget.currentUserId.length}');
     debugPrint('[CreateGroupPage] currentUserId is empty: ${widget.currentUserId.isEmpty}');
-    
+
     if (widget.currentUserId.isEmpty) {
       debugPrint('[CreateGroupPage] Warning: currentUserId is empty');
       setState(() {

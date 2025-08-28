@@ -484,13 +484,13 @@ class AppNotification {
     required this.timestamp,
   });
 
-  /// ✅ Put your factory here
+
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
       id: json['id'],
       title: json['title'] ?? '',
       body: json['message'] ?? '',
-      eventId: json['extra_data']?['event_id'], // eventId comes from extra_data
+      eventId: json['extra_data']?['event_id'],
       conversationId: json['conversation'],
       conversationName: json['conversation_name'],
       chatPartnerId: json['sender']?['id']?.toString(),

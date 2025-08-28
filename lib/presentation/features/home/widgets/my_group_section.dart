@@ -68,6 +68,7 @@ class _MyGroupsSectionState extends State<MyGroupsSection> {
               .map((group) => {
             'id': group['id'],
             'name': group['name'],
+            'isCurrentUserAdminInGroup': group['is_admin'] ?? false, // Fetch admin status
           })
               .toList();
           debugPrint('Processed Groups: $_groups');
@@ -139,14 +140,20 @@ class _MyGroupsSectionState extends State<MyGroupsSection> {
               final group = _groups[index];
               return GestureDetector(
                 onTap: () {
+                  if (currentUserId == null || currentUserId!.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('User ID is missing. Please log in again.')),
+                    );
+                    return;
+                  }
                   context.push(
                     RoutePaths.groupConversationPage,
                     extra: {
                       'groupName': group['name'],
                       'isGroupChat': true,
-                      'isCurrentUserAdminInGroup': false,
+                      'isCurrentUserAdminInGroup': group['isCurrentUserAdminInGroup'] ?? false,
                       'currentUserId': currentUserId,
-                      'groupId': group['id'],
+                      'conversationId': group['id'],
                     },
                   );
                 },

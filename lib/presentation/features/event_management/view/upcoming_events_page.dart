@@ -123,7 +123,6 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
     }
 
     return GestureDetector(
-      // Wrap with GestureDetector for tap detection
       onTap: () {
         print("Tapped event id: ${event.id}");
         context.push("${RoutePaths.eventDetails}/${event.id}");

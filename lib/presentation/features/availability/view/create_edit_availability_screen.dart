@@ -265,7 +265,7 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
                         listen: false,
                       );
 
-                      // ✅ Dynamically generate start date
+
                       final now = DateTime.now();
                       final year = now.year;
                       final month = now.month.toString().padLeft(2, '0');
@@ -274,8 +274,6 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
                       );
                       String startDate = "$year-$month-$selectedDay";
 
-                      // ✅ Example: End date same as start date
-                      // You can change Duration(days: X) if needed
                       final endDateObj = DateTime(
                         year,
                         int.parse(month),
@@ -290,9 +288,9 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
                         selectedTimeSlotIndex: _selectedTimeSlotIndex,
                         selectedRepeatOption: _selectedRepeatOption,
                         startDate: startDate,
-                        endDate: endDate, // ✅ No null now
+                        endDate: endDate,
                         notes: null,
-                        token: null, // Later: fetch from SharedPreferences
+                        // token: null, // Later: fetch from SharedPreferences
                       );
 
                       if (success) {

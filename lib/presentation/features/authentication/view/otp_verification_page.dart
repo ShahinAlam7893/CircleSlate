@@ -1,4 +1,5 @@
 // lib/presentation/auth/otp_verification_page.dart
+import 'package:circleslate/presentation/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:go_router/go_router.dart';
@@ -115,7 +116,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
         _isVerifying = false;
       });
       if (success) {
-        context.push('/password_reset');
+        context.push('/forgot_password_reset');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(authProvider.errorMessage ?? 'OTP verification failed.')),

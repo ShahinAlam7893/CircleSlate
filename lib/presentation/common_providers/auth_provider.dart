@@ -249,8 +249,9 @@ class AuthProvider extends ChangeNotifier {
   // -------------------- RESET PASSWORD --------------------
 
 
-  Future<bool> resetPassword({
-    required String currentPassword,
+  // -------------------- UPDATE PASSWORD (Logged-in user) --------------------
+  Future<bool> updatePassword({
+    required String oldPassword,
     required String newPassword,
     required String confirmPassword,
   }) async {
@@ -266,7 +267,6 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final token = _accessToken;
-
       final url = Uri.parse('${Urls.baseUrl}${ApiEndpoints.resetPassword}');
 
       final response = await http.put(
@@ -276,7 +276,7 @@ class AuthProvider extends ChangeNotifier {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'old_password': currentPassword,
+          'old_password': oldPassword,
           'new_password': newPassword,
           'confirm_password': confirmPassword,
         }),
@@ -284,22 +284,73 @@ class AuthProvider extends ChangeNotifier {
 
       _setLoading(false);
 
-      print("🔍 Reset Password Full Response: ${response.body}");
+      print("🔍 Update Password Response: ${response.body}");
       print("📡 Status Code: ${response.statusCode}");
 
       if (response.statusCode == 200) {
-        print('✅ Password reset successful.');
+        print('✅ Password updated successfully.');
         return true;
       }
 
-      // Handle cases where message field might not exist
+      final data = response.body.isNotEmpty ? jsonDecode(response.body) : {};
+      final errorMessage = data['message'] ?? data['detail'] ?? 'Password update failed.';
+      return _setError(errorMessage);
+
+    } catch (e) {
+      _setLoading(false);
+      print('💥 Exception during update password: $e');
+      return _setError('An unexpected error occurred while updating password.');
+    }
+  }
+
+  // -------------------- RESET PASSWORD (Forgot password, not logged-in) --------------------
+
+
+  Future<bool> resetPassword({
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    if (newPassword != confirmPassword) {
+      return _setError('Passwords do not match.');
+    }
+
+    if (_userEmail == null || _userOtp == null) {
+      return _setError('Email/OTP not found. Please verify first.');
+    }
+
+    _setLoading(true);
+
+    try {
+      final url = Uri.parse('${Urls.baseUrl}/auth/reset-password/');
+
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': _userEmail,
+          'otp': _userOtp,
+          'new_password': newPassword,
+          'confirm_password': confirmPassword,
+        }),
+      );
+
+      _setLoading(false);
+
+      print("🔍 Reset Password Response: ${response.body}");
+      print("📡 Status Code: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        print('✅ Password reset successfully (via forgot password).');
+        return true;
+      }
+
       final data = response.body.isNotEmpty ? jsonDecode(response.body) : {};
       final errorMessage = data['message'] ?? data['detail'] ?? 'Password reset failed.';
       return _setError(errorMessage);
 
     } catch (e) {
       _setLoading(false);
-      print('💥 Exception during password reset: $e');
+      print('💥 Exception during reset password: $e');
       return _setError('An unexpected error occurred during password reset.');
     }
   }

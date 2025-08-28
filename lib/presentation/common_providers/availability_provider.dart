@@ -2,32 +2,75 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
-class ApiEndpoints {
-  static const String getAvailability =
-      '/calendar/availability/'; // Adjust this to match your actual endpoint
-}
+import '../../core/network/endpoints.dart';
 
 class AvailabilityProvider extends ChangeNotifier {
-  // API endpoint
-  static const String _apiUrl =
-      "http://10.10.13.27:8000/api/calendar/availability/";
+  static const String _apiUrl = "${Urls.baseUrl}/calendar/availability/";
 
+  // -------------------- User Selection --------------------
+  String? selectedUserId; // ID of user whose calendar we are viewing
+
+  void setSelectedUserId(String userId) {
+    selectedUserId = userId.isNotEmpty ? userId : null;
+    print('AvailabilityProvider: Set selectedUserId to $selectedUserId');
+    notifyListeners();
+  }
+
+  List<int> allUserIds = [];
+  void setAllUserIds(List<int> userIds) {
+    allUserIds = userIds;
+    notifyListeners();
+  }
+
+  Future<void> fetchAllUsers() async {
+    final token = await _getToken();
+    if (token == null) {
+      print("⚠ No token found.");
+      errorMessage = 'Authentication token missing';
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer $token",
+      };
+
+      final response = await http.get(
+        Uri.parse("${Urls.baseUrl}/users/"),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> usersJson = jsonDecode(response.body);
+        final List<int> ids = usersJson.map((user) => user["id"] as int).toList();
+
+        setAllUserIds(ids);
+        print("All User IDs: $allUserIds");
+      } else {
+        print("⚠ Failed to fetch users: ${response.statusCode}");
+        errorMessage = 'Failed to fetch users: ${response.statusCode}';
+      }
+    } catch (e) {
+      print("🔥 Error fetching users: $e");
+      errorMessage = 'Error fetching users: $e';
+    }
+    notifyListeners();
+  }
+
+  // -------------------- Calendar & Availability --------------------
   Map<int, Map<String, dynamic>> apiAvailability = {};
   bool isLoading = false;
   String? errorMessage;
 
-  // Calendar date states: 0 = Unavailable, 1 = Available, 2 = Tentative
-  final Map<int, int> _calendarDateStates = {
-    for (int i = 1; i <= 31; i++) i: 2,
-  };
+  // New properties for day details
+  Map<String, dynamic>? selectedDayDetails;
+  bool isDayDetailsLoading = false;
+  String? dayDetailsError;
 
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('accessToken');
-  }
-
-  // Weekly availability: DateTime.sunday = 7 ... saturday = 6
+  final Map<int, int> _calendarDateStates = {for (int i = 1; i <= 31; i++) i: 2};
   final Map<int, int> _weeklyAvailability = {
     DateTime.sunday: 2,
     DateTime.monday: 2,
@@ -37,8 +80,6 @@ class AvailabilityProvider extends ChangeNotifier {
     DateTime.friday: 2,
     DateTime.saturday: 2,
   };
-
-  // Time ranges for each day
   final Map<int, String> _weeklyTimeRanges = {
     DateTime.sunday: 'Not Set',
     DateTime.monday: 'Not Set',
@@ -53,7 +94,24 @@ class AvailabilityProvider extends ChangeNotifier {
   Map<int, int> get weeklyAvailability => _weeklyAvailability;
   Map<int, String> get weeklyTimeRanges => _weeklyTimeRanges;
 
-  /// Updates a specific date's state
+  void resetCalendarData() {
+    _calendarDateStates.clear();
+    for (int i = 1; i <= 31; i++) {
+      _calendarDateStates[i] = 2;
+    }
+    apiAvailability.clear();
+    errorMessage = null;
+    selectedDayDetails = null;
+    dayDetailsError = null;
+    print('AvailabilityProvider: Reset calendar data');
+    notifyListeners();
+  }
+
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('accessToken');
+  }
+
   void updateDateState(int date, int newState) {
     if (_calendarDateStates.containsKey(date)) {
       _calendarDateStates[date] = newState;
@@ -61,34 +119,22 @@ class AvailabilityProvider extends ChangeNotifier {
     }
   }
 
-  /// Toggles a date's availability state
   void toggleDateState(int date) {
     if (_calendarDateStates.containsKey(date)) {
       int currentState = _calendarDateStates[date]!;
-      int newState;
-      if (currentState == 2) {
-        newState = 1;
-      } else if (currentState == 1) {
-        newState = 0;
-      } else {
-        newState = 2;
-      }
+      int newState = currentState == 2 ? 1 : currentState == 1 ? 0 : 2;
       _calendarDateStates[date] = newState;
       notifyListeners();
     }
   }
 
-  /// Sets multiple dates to a specific status
   void setAvailabilityForDates(List<int> dates, int status) {
     for (int date in dates) {
-      if (_calendarDateStates.containsKey(date)) {
-        _calendarDateStates[date] = status;
-      }
+      if (_calendarDateStates.containsKey(date)) _calendarDateStates[date] = status;
     }
     notifyListeners();
   }
 
-  /// Set availability for a specific day of week
   void setDayOfWeekAvailability(int dayOfWeek, int status, String timeRange) {
     if (_weeklyAvailability.containsKey(dayOfWeek)) {
       _weeklyAvailability[dayOfWeek] = status;
@@ -97,18 +143,16 @@ class AvailabilityProvider extends ChangeNotifier {
     }
   }
 
-  /// Reset all weekly availability
   void resetWeeklyAvailability() {
     _weeklyAvailability.updateAll((key, value) => 2);
     _weeklyTimeRanges.updateAll((key, value) => 'Not Set');
     notifyListeners();
   }
 
-  /// Convert status code to string for API
   String _statusToString(int status) {
     switch (status) {
       case 1:
-        return "available"; // lowercase
+        return "available";
       case 0:
         return "busy";
       case 2:
@@ -118,7 +162,6 @@ class AvailabilityProvider extends ChangeNotifier {
     }
   }
 
-  /// Convert repeat option index to API string
   String _repeatOptionToString(int option) {
     switch (option) {
       case 0:
@@ -132,7 +175,92 @@ class AvailabilityProvider extends ChangeNotifier {
     }
   }
 
-  /// Save availability to API
+  // -------------------- NEW: Fetch Day Details --------------------
+  Future<void> fetchDayDetails(DateTime date) async {
+    final token = await _getToken();
+    if (token == null) {
+      dayDetailsError = 'Authentication token missing';
+      notifyListeners();
+      return;
+    }
+
+    isDayDetailsLoading = true;
+    dayDetailsError = null;
+    selectedDayDetails = null;
+    notifyListeners();
+
+    try {
+      final headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer $token",
+      };
+
+      final dateString = "${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+
+      String url;
+      if (selectedUserId != null) {
+        // For other users: Use the user-day-availability endpoint
+        url = "${Urls.baseUrl}/calendar/user-day-availability/$selectedUserId/?date=$dateString";
+      } else {
+        // For current user: Use the existing day endpoint
+        url = "${Urls.baseUrl}/calendar/day/?date=$dateString";
+      }
+
+      print('Fetching day details from: $url');
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      print('Day details response status: ${response.statusCode}');
+      print('Day details response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (selectedUserId != null) {
+          // Format the user-day-availability response
+          selectedDayDetails = {
+            'date': data['date'],
+            'user_id': data['user_id'],
+            'time_slots': data['time_slots'] ?? [],
+            'notes': data['notes'] ?? '',
+            'availability_id': data['availability_id'],
+          };
+        } else {
+          // Format the current user day response
+          selectedDayDetails = {
+            'date': dateString,
+            'time_slots': data['time_slots'] ?? [],
+            'notes': data['notes'] ?? '',
+          };
+        }
+      } else if (response.statusCode == 404) {
+        // No availability data for this day
+        selectedDayDetails = {
+          'date': dateString,
+          'time_slots': [],
+          'notes': '',
+          'message': 'No availability data for this date'
+        };
+      } else {
+        dayDetailsError = 'Failed to fetch day details: ${response.statusCode}';
+        print("⚠ $dayDetailsError");
+      }
+    } catch (e) {
+      dayDetailsError = 'Error fetching day details: $e';
+      print("🔥 $dayDetailsError");
+    }
+
+    isDayDetailsLoading = false;
+    notifyListeners();
+  }
+
+  void clearDayDetails() {
+    selectedDayDetails = null;
+    dayDetailsError = null;
+    notifyListeners();
+  }
+
   Future<bool> saveAvailabilityToAPI({
     required int selectedStatus,
     required int selectedTimeSlotIndex,
@@ -140,12 +268,11 @@ class AvailabilityProvider extends ChangeNotifier {
     required String startDate,
     String? endDate,
     String? notes,
-    required token,
   }) async {
-    final token = await _getToken(); // 🔹 Get token from SharedPreferences
-
+    final token = await _getToken();
     if (token == null) {
-      print("❌ No token found, user not logged in");
+      errorMessage = 'Authentication token missing';
+      notifyListeners();
       return false;
     }
 
@@ -154,17 +281,15 @@ class AvailabilityProvider extends ChangeNotifier {
     bool eveningAvailable = selectedTimeSlotIndex == 2;
     bool nightAvailable = selectedTimeSlotIndex == 3;
 
-    String statusStr = _statusToString(selectedStatus);
-
     final body = {
       "morning_available": morningAvailable,
-      "morning_status": statusStr,
+      "morning_status": _statusToString(selectedStatus),
       "afternoon_available": afternoonAvailable,
-      "afternoon_status": statusStr,
+      "afternoon_status": _statusToString(selectedStatus),
       "evening_available": eveningAvailable,
-      "evening_status": statusStr,
+      "evening_status": _statusToString(selectedStatus),
       "night_available": nightAvailable,
-      "night_status": statusStr,
+      "night_status": _statusToString(selectedStatus),
       "repeat_schedule": _repeatOptionToString(selectedRepeatOption),
       "start_date": startDate,
       "end_date": endDate ?? "",
@@ -174,31 +299,37 @@ class AvailabilityProvider extends ChangeNotifier {
     final headers = {
       "Content-Type": "application/json",
       "Accept": "application/json",
-      "Authorization": "Bearer $token", // 🔹 Send token
+      "Authorization": "Bearer $token",
     };
 
     try {
-      final response = await http.post(
-        Uri.parse(_apiUrl),
-        headers: headers,
-        body: jsonEncode(body),
-      );
-
+      final response = await http.post(Uri.parse(_apiUrl), headers: headers, body: jsonEncode(body));
       if (response.statusCode == 200 || response.statusCode == 201) {
         print("✅ Availability saved: ${response.body}");
         return true;
       } else {
-        print("❌ Failed to save: ${response.statusCode} - ${response.body}");
+        print("⚠ Failed to save: ${response.statusCode} - ${response.body}");
+        errorMessage = 'Failed to save availability: ${response.statusCode}';
+        notifyListeners();
         return false;
       }
     } catch (e) {
       print("🔥 Error saving availability: $e");
+      errorMessage = 'Error saving availability: $e';
+      notifyListeners();
       return false;
     }
   }
 
-  // -------------------- Fetch Availability from API --------------------
-  Future<void> fetchAvailabilityFromAPI(String token) async {
+  // -------------------- Fetch Methods --------------------
+  Future<void> fetchAvailabilityForUser(String userId) async {
+    final token = await _getToken();
+    if (token == null) {
+      errorMessage = 'Authentication token missing';
+      notifyListeners();
+      return;
+    }
+
     try {
       final headers = {
         "Content-Type": "application/json",
@@ -206,33 +337,35 @@ class AvailabilityProvider extends ChangeNotifier {
         "Authorization": "Bearer $token",
       };
 
-      final response = await http.get(Uri.parse(_apiUrl), headers: headers);
+      print('Fetching user availability for user_id=$userId');
+      final response = await http.get(
+        Uri.parse("${Urls.baseUrl}/calendar/availability/?user_id=$userId"),
+        headers: headers,
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         apiAvailability = _mapApiData(data);
-
-        print("Mapped Availability: $apiAvailability");
-
-        notifyListeners();
       } else {
-        print("❌ Failed to fetch: ${response.statusCode} - ${response.body}");
+        errorMessage = 'Failed to fetch user availability: ${response.statusCode}';
+        print("⚠ $errorMessage");
       }
     } catch (e) {
-      print("🔥 Error fetching availability: $e");
+      errorMessage = 'Error fetching user availability: $e';
+      print("🔥 $errorMessage");
     }
+    notifyListeners();
   }
 
-  // Put this helper method inside the class (or just below it)
   Map<int, Map<String, dynamic>> _mapApiData(List<dynamic> apiResponse) {
     final Map<int, Map<String, dynamic>> mapped = {};
-
     for (final item in apiResponse) {
       final date = DateTime.parse(item["start_date"]);
       final weekday = date.weekday;
-
       final slots = item["all_time_slots_with_status"] as Map<String, dynamic>;
-
       String selectedTimeRange = "Not Set";
       String statusDisplay = "Tentative";
 
@@ -249,11 +382,9 @@ class AvailabilityProvider extends ChangeNotifier {
         "timeRange": selectedTimeRange,
       };
     }
-
     return mapped;
   }
 
-  // Helper method to convert status string to code
   int _statusStringToCode(String status) {
     switch (status.toLowerCase()) {
       case "busy":
@@ -267,15 +398,20 @@ class AvailabilityProvider extends ChangeNotifier {
     }
   }
 
-  // -------------------- Fetches availability for the current month --------------------
+  // Updated fetchMonthAvailabilityFromAPI method for availability_provider.dart
+
   Future<void> fetchMonthAvailabilityFromAPI(int year, int month) async {
     final token = await _getToken();
     if (token == null) {
-      print("❌ No token found.");
+      errorMessage = 'Authentication token missing';
+      isLoading = false;
+      notifyListeners();
       return;
     }
 
     isLoading = true;
+    errorMessage = null;
+    resetCalendarData();
     notifyListeners();
 
     try {
@@ -284,44 +420,96 @@ class AvailabilityProvider extends ChangeNotifier {
         "Accept": "application/json",
         "Authorization": "Bearer $token",
       };
+      print('Fetching availability for $month/$year, user: $selectedUserId');
 
-      // Get total days in month
       final daysInMonth = DateTime(year, month + 1, 0).day;
 
-      for (int day = 1; day <= daysInMonth; day++) {
-        final dateString =
-            "${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
+      if (selectedUserId != null) {
+        // For other users: Use the user-month-availability endpoint
+        final url = "${Urls.baseUrl}/calendar/user-month-availability/$selectedUserId/";
+        print('Fetching user month availability from: $url');
 
-        final response = await http.get(
-          Uri.parse(
-            "http://10.10.13.27:8000/api/calendar/day/?date=$dateString",
-          ),
-          headers: headers,
-        );
+        final response = await http.get(Uri.parse(url), headers: headers);
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
-          final timeSlots = data["time_slots"] ?? [];
 
-          // Default = 2 (Tentative)
-          int statusCode = 2;
+          // Parse the month data
+          if (data['days'] != null) {
+            final days = data['days'] as List<dynamic>;
 
-          if (timeSlots.isNotEmpty) {
-            final status = timeSlots.first["status"]?.toLowerCase() ?? "maybe";
-            if (status == "busy") statusCode = 0;
-            if (status == "available") statusCode = 1;
-            if (status == "maybe") statusCode = 2;
+            for (var dayData in days) {
+              final dateStr = dayData['date'] as String;
+              final date = DateTime.parse(dateStr);
+
+              if (date.month == month && date.year == year) {
+                final day = date.day;
+                final timeSlots = dayData['time_slots'] as List<dynamic>;
+
+                // Determine overall status for the day
+                int statusCode = 2; // default maybe/not set
+
+                if (timeSlots.isNotEmpty) {
+                  // Check if any slot is available
+                  bool hasAvailable = false;
+                  bool hasBusy = false;
+
+                  for (var slot in timeSlots) {
+                    final status = (slot['status'] ?? 'maybe').toLowerCase();
+                    if (status == 'available') hasAvailable = true;
+                    if (status == 'busy') hasBusy = true;
+                  }
+
+                  // Priority: available > busy > maybe
+                  if (hasAvailable) {
+                    statusCode = 1; // available
+                  } else if (hasBusy) {
+                    statusCode = 0; // busy
+                  }
+                }
+
+                _calendarDateStates[day] = statusCode;
+              }
+            }
           }
 
-          _calendarDateStates[day] = statusCode;
+          print("📅 Calendar data updated for user $selectedUserId: $_calendarDateStates");
         } else {
-          _calendarDateStates[day] = 2; // Tentative if no data
+          errorMessage = 'Failed to fetch user availability: ${response.statusCode}';
+          print("⚠ $errorMessage");
+          print("Response body: ${response.body}");
         }
+      } else {
+        // For own user: Fetch per day (existing logic)
+        for (int day = 1; day <= daysInMonth; day++) {
+          final dateString =
+              "${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
+
+          final url = "${Urls.baseUrl}/calendar/day/?date=$dateString";
+
+          final response = await http.get(Uri.parse(url), headers: headers);
+
+          int statusCode = 2; // default maybe
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            final timeSlots = data["time_slots"] ?? [];
+            if (timeSlots.isNotEmpty) {
+              final status = (timeSlots.first["status"] ?? "maybe").toLowerCase();
+              if (status == "busy") statusCode = 0;
+              if (status == "available") statusCode = 1;
+              if (status == "maybe") statusCode = 2;
+            }
+          } else {
+            print("⚠ Failed to fetch day $dateString: ${response.statusCode}");
+          }
+          _calendarDateStates[day] = statusCode;
+        }
+        print("📅 Calendar data updated for current user: $_calendarDateStates");
       }
 
-      print("📅 Calendar data updated for $month/$year: $_calendarDateStates");
     } catch (e) {
-      print("🔥 Error fetching month availability: $e");
+      errorMessage = 'Error fetching month availability: $e';
+      print("🔥 $errorMessage");
     }
 
     isLoading = false;

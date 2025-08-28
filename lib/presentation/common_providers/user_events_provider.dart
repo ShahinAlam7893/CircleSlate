@@ -6,24 +6,53 @@ import 'package:provider/provider.dart';
 
 class UserEventsProvider extends ChangeNotifier {
   Set<String> _goingEventDates = {}; // Store dates as 'yyyy-MM-dd'
+  bool isLoading = false;
+  String? errorMessage;
+  String? selectedUserId;
 
   Set<String> get goingEventDates => _goingEventDates;
 
-  // Fetch all events where user is "going" using context to get userId from AuthProvider
-  Future<void> fetchGoingEvents(BuildContext context) async {
+  void setSelectedUserId(String userId) {
+    selectedUserId = userId.isNotEmpty ? userId : null;
+    print('UserEventsProvider: Set selectedUserId to $selectedUserId');
+    notifyListeners();
+  }
+
+  // Fetch all events where user is "going"
+  Future<void> fetchGoingEvents(BuildContext context, {String? userId}) async {
+    isLoading = true;
+    errorMessage = null;
+    _goingEventDates.clear();
+    notifyListeners();
+
+    // Use provided userId if available, otherwise fall back to AuthProvider
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final userId = authProvider.userProfile?['id']?.toString();
-    if (userId == null) {
-      print("No userId found in AuthProvider.userProfile");
-      return; // Return empty if no userId
+    final effectiveUserId = userId ?? authProvider.userProfile?['id']?.toString();
+    if (effectiveUserId == null) {
+      print("UserEventsProvider: No userId provided and no userId in AuthProvider");
+      errorMessage = 'No user ID available';
+      isLoading = false;
+      notifyListeners();
+      return;
     }
 
-    List<Event> events = await EventService.fetchEvents(); // Fetch all/upcoming events
-    final goingEvents = events
-        .where((event) => event.responses.any((resp) => resp.userId == userId && resp.responseDisplay == 'Going'))
-        .toList();
+    print('UserEventsProvider: Fetching events for user ID: $effectiveUserId');
 
-    _goingEventDates = goingEvents.map((event) => event.date).toSet();
+    try {
+      List<Event> events = await EventService.fetchEvents();
+      final goingEvents = events
+          .where((event) => event.responses.any((resp) => resp.userId == effectiveUserId && resp.responseDisplay == 'Going'))
+          .toList();
+
+      _goingEventDates = goingEvents.map((event) => event.date).toSet();
+      print('UserEventsProvider: Fetched ${_goingEventDates.length} going events for user $effectiveUserId');
+      print('UserEventsProvider: Going event dates: $_goingEventDates');
+    } catch (e) {
+      errorMessage = 'Error fetching events: $e';
+      print('UserEventsProvider: $errorMessage');
+    }
+
+    isLoading = false;
     notifyListeners();
   }
 

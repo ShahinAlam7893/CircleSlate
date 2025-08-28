@@ -9,9 +9,8 @@ class GroupChatSocketService {
   WebSocketChannel? _channel;
   final String baseWsUrl = 'ws://10.10.13.27:8000/ws/chat/';
   final Function(Message) onMessageReceived;
-  final Function(List<dynamic>)? onConversationMessages; // Add callback for conversation messages
+  final Function(List<dynamic>)? onConversationMessages;
 
-  // Add a connection status controller
   final StreamController<bool> _connectionStatusController = StreamController<bool>.broadcast();
   Timer? _heartbeatTimer;
   Timer? _reconnectTimer;
@@ -107,21 +106,25 @@ class GroupChatSocketService {
     }
   }
 
-  void sendMessage(String conversationId, String senderId, String content) {
+  void sendMessage(String conversationId, String senderId, String content, {String? clientMessageId}) {
     if (_channel == null) {
       debugPrint('[GroupChatSocketService] WebSocket not connected');
       return;
     }
     final message = {
+      'type': 'message',
       'conversation_id': conversationId,
       'sender_id': senderId,
       'content': content,
       'message_type': 'text',
+      if (clientMessageId != null) 'client_message_id': clientMessageId,
     };
-    debugPrint('[GroupChatSocketService] Sending message: $message');
-    debugPrint('conversatiogfdfn ID: $conversationId');
 
-    _channel!.sink.add(jsonEncode(message));
+    sendRawMessage(jsonEncode(message));
+
+    debugPrint('[GroupChatSocketService] Sending message: $message');
+    debugPrint('conversation ID: $conversationId');
+
   }
 
   void sendRawMessage(String message) {
@@ -167,7 +170,7 @@ class GroupChatSocketService {
     _isConnected = false;
     _connectionStatusController.add(false);
     _heartbeatTimer?.cancel();
-    
+
     if (_reconnectAttempts < maxReconnectAttempts) {
       _scheduleReconnect();
     }

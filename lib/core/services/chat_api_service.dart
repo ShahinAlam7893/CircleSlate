@@ -5,10 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/message_model.dart';
-import '../network/endpoints.dart';
 
 class ChatApiService {
-  final String _baseUrl = '${Urls.baseUrl}'; // Your REST API base URL
+  final String _baseUrl = 'http://10.10.13.27:8000/api'; // Your REST API base URL
 
   Future<List<MessageModel>> fetchChatHistory(String conversationId) async {
     final prefs = await SharedPreferences.getInstance();

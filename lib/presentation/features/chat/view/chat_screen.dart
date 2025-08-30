@@ -327,7 +327,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
           // Get real user image URL instead of static images
           String? senderImageUrl;
           if (senderId == widget.currentUserId) {
-            // Current user - get from AuthProvider
             senderImageUrl = UserImageHelper.getCurrentUserImageUrl(context);
           } else {
             // Other user - try to get from message data first, then API
@@ -335,7 +334,7 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
               String imageUrl = msgData['sender']['profile_photo'].toString();
               if (imageUrl.isNotEmpty) {
                 if (!imageUrl.startsWith('http')) {
-                  imageUrl = 'http://10.10.13.27:8000$imageUrl';
+                  imageUrl = 'http://72.60.26.57$imageUrl';
                 }
                 senderImageUrl = imageUrl;
               }
@@ -407,7 +406,7 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
         senderImageUrl = msgData['sender']['profile_photo']?.toString() ??
             msgData['sender']['profile_photo_url']?.toString();
         if (senderImageUrl != null && !senderImageUrl!.startsWith('http')) {
-          senderImageUrl = 'http://10.10.13.27:8000$senderImageUrl';
+          senderImageUrl = 'http://72.60.26.57$senderImageUrl';
         }
       } else {
         senderId = msgData['sender_id']?.toString() ?? msgData['sender']?.toString() ?? '';
@@ -566,7 +565,7 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       final token = prefs.getString('accessToken');
       if (token != null) {
         try {
-          final url = Uri.parse('http://10.10.13.27:8000/api/chat/messages/$_conversationId/send/');
+          final url = Uri.parse('http://72.60.26.57/api/chat/messages/$_conversationId/send/');
           final response = await http.post(
             url,
             headers: {

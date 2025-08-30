@@ -106,7 +106,7 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
       if (token == null) return;
 
       final response = await http.get(
-        Uri.parse('http://10.10.13.27:8000/api/chat/conversations/${widget.groupId}/'),
+        Uri.parse('http://72.60.26.57/api/chat/conversations/${widget.groupId}/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

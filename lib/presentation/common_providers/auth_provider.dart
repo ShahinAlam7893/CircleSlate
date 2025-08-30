@@ -130,7 +130,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> addChild(String name, int age) async {
-    final url = Uri.parse('http://10.10.13.27:8000/api/auth/children/');
+    final url = Uri.parse('http://72.60.26.57/api/auth/children/');
 
     final prefs = await SharedPreferences.getInstance();
     final savedAccessToken = prefs.getString('accessToken');
@@ -165,7 +165,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<List<Map<String, dynamic>>> fetchChildren() async {
-    final url = Uri.parse('http://10.10.13.27:8000/api/auth/children/');
+    final url = Uri.parse('http://72.60.26.57/api/auth/children/');
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedAccessToken = prefs.getString('accessToken');
@@ -445,53 +445,40 @@ class AuthProvider extends ChangeNotifier {
       print('🔄 Starting profile update...');
       print('📦 Updated data: $updatedData');
 
-      final token = _accessToken; // Direct access, no await needed
-      print('🔑 Token loaded: ${token != null ? 'Yes' : 'No'}');
-      print('🔑 Token loaded: ${token}');
-
+      final token = _accessToken;
       if (token == null) {
         print('❌ No token found. Cannot update profile.');
         return false;
       }
 
-      final uri = Uri.parse('http://10.10.13.27:8000/api/auth/profile/update/');
+      final uri = Uri.parse('http://72.60.26.57/api/auth/profile/update/');
       final request = http.MultipartRequest('PATCH', uri);
 
-      // Authorization header
       request.headers['Authorization'] = 'Bearer $token';
 
-      // Text fields
       if (updatedData['full_name'] != null) {
         request.fields['full_name'] = updatedData['full_name'];
         print('📝 Added field: full_name = ${updatedData['full_name']}');
       }
 
-      // Profile phone number (nested field)
       if (updatedData['phone_number'] != null) {
         request.fields['profile.phone_number'] = updatedData['phone_number'];
         print('📞 Added field: profile.phone_number = ${updatedData['phone_number']}');
       }
 
-      // Children (if needed)
-      if (updatedData['children'] != null) {
-        request.fields['profile.children'] = jsonEncode(updatedData['children']);
-      }
-
-      // Profile photo
       if (updatedData['profile_image'] != null &&
           File(updatedData['profile_image']).existsSync()) {
         print('📷 Adding profile image: ${updatedData['profile_image']}');
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'profile_photo', // API expects this name
-            updatedData['profile_image'],
-          ),
+        var multipartFile = await http.MultipartFile.fromPath(
+          'profile_photo',
+          updatedData['profile_image'],
         );
+        request.files.add(multipartFile);
+        print('📤 File size: ${await multipartFile.length} bytes');
       } else {
-        print('⚠️ No profile image to upload.');
+        print('⚠️ No valid profile image to upload or file does not exist.');
       }
 
-      // Print all request fields before sending
       print('📤 Final request fields: ${request.fields}');
       print('📤 Final request files: ${request.files.map((f) => f.filename).toList()}');
 
@@ -503,12 +490,37 @@ class AuthProvider extends ChangeNotifier {
       print('📥 Response body: ${response.body}');
 
       if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
         print('✅ Profile updated successfully!');
-        // Refresh profile data and notify listeners
+        print('📷 New profile photo URL: ${responseData['profile_photo']}');
+
+        // Validate the profile photo URL
+        if (responseData['profile_photo'] != null) {
+          try {
+            final imageResponse = await http.head(Uri.parse(responseData['profile_photo']));
+            print('📷 Image URL validation status: ${imageResponse.statusCode}');
+            if (imageResponse.statusCode == 200) {
+              _userProfile?['profile_photo'] = responseData['profile_photo'];
+              print('✅ Valid profile photo URL: ${responseData['profile_photo']}');
+            } else {
+              print('⚠️ Profile photo URL is invalid: ${responseData['profile_photo']}');
+              _userProfile?['profile_photo'] = ''; // Clear invalid URL
+            }
+          } catch (e) {
+            print('⚠️ Error validating profile photo URL: $e');
+            _userProfile?['profile_photo'] = ''; // Clear invalid URL
+          }
+        } else {
+          print('⚠️ No profile photo URL in response.');
+          _userProfile?['profile_photo'] = '';
+        }
+
+        await _saveUserProfileToStorage();
         await refreshUserData();
+        notifyListeners();
         return true;
       } else {
-        print('❌ Update failed.');
+        print('❌ Update failed: ${response.body}');
         return false;
       }
     } catch (e) {

@@ -60,16 +60,16 @@ class AuthService {
           '/auth/register/', // Adjust endpoint as needed
           fields,
           file: profileImage,
-          fileField: 'profile_photo', // Ensure this matches your backend's expected field name
+          fileField: 'profile_photo',
         );
       } else {
         // Otherwise, use a regular post request
         response = await _apiHelper.post(
-          '/auth/register/', // Adjust endpoint as needed
+          '/auth/register/',
           fields,
         );
       }
-      // We don't call _handleResponse here because the caller (AuthProvider) will handle the Response object.
+
       return response;
     } catch (e) {
       rethrow;

@@ -294,7 +294,7 @@ class ChatSocketService {
         throw Exception('Authentication token not found');
       }
 
-      final wsUrl = 'ws://10.10.13.27:8000/ws/chat/$_conversationId/?token=$_token';
+      final wsUrl = 'ws://72.60.26.57:8000/ws/chat/$_conversationId/?token=$_token';
       debugPrint('[ChatSocketService] Connecting to WebSocket: $wsUrl');
 
       // Close existing channel if any

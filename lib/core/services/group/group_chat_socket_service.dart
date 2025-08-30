@@ -7,7 +7,7 @@ import '../../../data/models/group_model.dart';
 
 class GroupChatSocketService {
   WebSocketChannel? _channel;
-  final String baseWsUrl = 'ws://10.10.13.27:8000/ws/chat/';
+  final String baseWsUrl = 'ws://72.60.26.57:8000/ws/chat/';
   final Function(Message) onMessageReceived;
   final Function(List<dynamic>)? onConversationMessages;
 

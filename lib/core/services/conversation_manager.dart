@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ConversationManager {
-  static const String baseUrl = 'http://10.10.13.27:8000/api/chat';
+  static const String baseUrl = 'http://72.60.26.57/api/chat';
 
   /// Get or create a one-to-one conversation between two users
   static Future<Map<String, dynamic>> getOrCreateConversation(

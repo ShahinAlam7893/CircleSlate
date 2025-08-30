@@ -9,14 +9,6 @@ import 'package:provider/provider.dart';
 import 'dart:convert'; // REQUIRED for jsonEncode/decode if used directly here, but AuthProvider handles it
 import '../../../common_providers/auth_provider.dart';
 
-// Add the API endpoint for profile update (if not already in a central file)
-// This should ideally come from lib/core/constants/api_endpoints.dart
-// For self-containment in this immersive, we'll keep it here.
-class ApiEndpoints {
-  static const String updateProfile = '/auth/profile/update/'; // Adjust this to match your actual endpoint
-}
-
-// --- AuthInputField (same as before) ---
 class AuthInputField extends StatefulWidget {
   final TextEditingController controller;
   final String labelText;
@@ -102,7 +94,7 @@ class EditProfilePage extends StatefulWidget {
   final String initialFullName;
   final String initialEmail;
   final String initialMobile;
-  final List<Map<String, String>> initialChildren; // Assuming children are Map<String, String>
+  final List<Map<String, String>> initialChildren;
   final String initialProfileImageUrl;
 
   const EditProfilePage({
@@ -125,8 +117,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _mobileController;
   late List<TextEditingController> _childNameControllers;
   late List<TextEditingController> _childAgeControllers;
-  late String _currentProfileImageUrl; // Stores the URL of the current profile image (from network)
-  File? _pickedImageFile; // Stores the new image file picked from the device
+  late String _currentProfileImageUrl;
+  File? _pickedImageFile;
 
   bool _isSaving = false;
   @override
@@ -140,13 +132,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _childNameControllers = [];
     _childAgeControllers = [];
 
-    // ✅ FIX: Load latest profile data from AuthProvider
     Future.microtask(() async {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.fetchUserProfile(); // Fetch from API
+      await authProvider.fetchUserProfile();
       final profile = authProvider.userProfile ?? {};
 
-      // ✅ FIX: Load children from nested "profile"
       final children = (profile["profile"]?["children"] as List?) ?? [];
       if (children.isNotEmpty) {
         setState(() {
@@ -164,7 +154,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         });
       }
 
-      // ✅ FIX: Load profile image from API
       if (profile["profile_photo"] != null && profile["profile_photo"].toString().isNotEmpty) {
         setState(() {
           _currentProfileImageUrl = profile["profile_photo"];
@@ -213,7 +202,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       });
     }
   }
-  // --- END IMAGE PICKING LOGIC ---
+
 
 
   // Save profile with proper API integration
@@ -246,6 +235,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
         bool profileUpdated = await authProvider.updateUserProfile(updateData);
 
         if (profileUpdated) {
+          // Refresh user data to get the latest profile photo URL
+          await authProvider.refreshUserData();
+
+          // Update local profile image URL
+          setState(() {
+            _currentProfileImageUrl = authProvider.userProfile?['profile_photo'] ?? _currentProfileImageUrl;
+          });
+
           // Add children by calling API individually
           bool allChildrenSuccess = true;
           for (int i = 0; i < _childNameControllers.length; i++) {
@@ -261,9 +258,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
             }
           }
 
-          // Refresh user data to update all screens
-          await authProvider.refreshUserData();
-
           if (mounted) {
             // Return updated data to profile page
             final updatedData = {
@@ -278,7 +272,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   'age': _childAgeControllers[index].text.trim(),
                 };
               }).toList(),
-              'profileImageUrl': _pickedImageFile?.path ?? _currentProfileImageUrl,
+              'profileImageUrl': authProvider.userProfile?['profile_photo'] ?? _currentProfileImageUrl,
             };
 
             ScaffoldMessenger.of(context).showSnackBar(
@@ -350,12 +344,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       radius: 60,
                       backgroundColor: Colors.grey.shade200,
                       backgroundImage: _pickedImageFile != null
-                          ? FileImage(_pickedImageFile!) // Display newly picked image
+                          ? FileImage(_pickedImageFile!)
                           : (_currentProfileImageUrl.isNotEmpty
-                          ? NetworkImage(_currentProfileImageUrl) // Display existing network image
+                          ? NetworkImage(_currentProfileImageUrl)
                           : null) as ImageProvider?,
+                      onBackgroundImageError: _currentProfileImageUrl.isNotEmpty
+                          ? (exception, stackTrace) {
+                        print('❌ Failed to load profile image: $exception');
+                        setState(() {
+                          _currentProfileImageUrl = '';
+                        });
+                      }
+                          : null,
                       child: _pickedImageFile == null && _currentProfileImageUrl.isEmpty
-                          ? Icon(Icons.person, size: 60, color: Colors.grey.shade400) // Default icon
+                          ? Icon(Icons.person, size: 60, color: Colors.grey.shade400)
                           : null,
                     ),
                     Positioned(

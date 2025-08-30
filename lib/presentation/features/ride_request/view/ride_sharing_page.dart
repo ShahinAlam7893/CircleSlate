@@ -165,7 +165,7 @@ class _RideSharingPageState extends State<RideSharingPage> {
 
   Future<void> acceptRide(String rideId) async {
     final url =
-        'http://10.10.13.27:8000/api/event/ride-requests/$rideId/accept/';
+        'http://72.60.26.57/api/event/ride-requests/$rideId/accept/';
     print('API URL: $url');
 
     // Await the token

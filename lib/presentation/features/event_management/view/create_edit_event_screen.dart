@@ -771,9 +771,6 @@ class _CreateEventPageState extends State<CreateEventPage> {
                 onPressed: () {
                   context.push('/up_coming_events');
                   createEvent();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Create Event Tapped!')),
-                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryBlue,

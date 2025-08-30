@@ -52,7 +52,7 @@
 // // }
 // //
 // // class NotificationService {
-// //   final String _baseUrl = 'http://10.10.13.27:8000/api/chat/notifications/';
+// //   final String _baseUrl = 'http://72.60.26.57/api/chat/notifications/';
 // //
 // //   /// Fetch notifications from API
 // //   Future<List<AppNotification>> fetchNotifications({int limit = 5101}) async {
@@ -210,7 +210,7 @@
 // }
 //
 // class NotificationService {
-//   final String _baseUrl = 'http://10.10.13.27:8000/api/chat/notifications/';
+//   final String _baseUrl = 'http://72.60.26.57/api/chat/notifications/';
 //
 //   /// Fetch notifications from API
 //   Future<List<AppNotification>> fetchNotifications({int limit = 5101}) async {

@@ -55,6 +55,7 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: AppColors.primaryBlue,
         title: const Text(
           'Upcoming Events',

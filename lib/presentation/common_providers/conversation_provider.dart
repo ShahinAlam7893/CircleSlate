@@ -69,8 +69,8 @@ class ConversationProvider extends ChangeNotifier {
     }
 
     final uri = Uri.parse(
-      'ws://10.10.13.27:8000/ws/chat/conversations/?token=$token',
-      // 'http://10.10.13.27:8000/api/chat/conversations/?token=$token',
+      'ws://72.60.26.57:8000/ws/chat/conversations/?token=$token',
+      // 'http://72.60.26.57/api/chat/conversations/?token=$token',
     );
 
     _channel = WebSocketChannel.connect(uri);

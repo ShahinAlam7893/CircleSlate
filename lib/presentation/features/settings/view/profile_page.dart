@@ -182,7 +182,7 @@ class _ProfilePageState extends State<ProfilePage> {
     // ✅ Ensure profile image is absolute URL
     String imageUrl = profile['profile_photo'] ?? '';
     if (imageUrl.isNotEmpty && !imageUrl.startsWith("http")) {
-      imageUrl = "http://10.10.13.27:8000${imageUrl}";
+      imageUrl = "http://72.60.26.57${imageUrl}";
     }
 
     setState(() {

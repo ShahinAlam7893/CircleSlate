@@ -508,7 +508,7 @@
 //                                       final imageUrl =
 //                                           photo.toString().startsWith("http")
 //                                           ? photo.toString()
-//                                           : "http://10.10.13.27:8000$photo";
+//                                           : "http://72.60.26.57$photo";
 //
 //                                       return Image.network(
 //                                         imageUrl,
@@ -1724,7 +1724,7 @@ class _HomePageState extends State<HomePage> {
                                       final imageUrl =
                                       photo.toString().startsWith("http")
                                           ? photo.toString()
-                                          : "http://10.10.13.27:8000$photo";
+                                          : "http://72.60.26.57$photo";
 
                                       return Image.network(
                                         imageUrl,
@@ -1832,13 +1832,10 @@ class _HomePageState extends State<HomePage> {
                           title: 'Add Event',
                           onTap: () {
                             context.push('/create_event');
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Add Event Tapped')),
-                            );
                           },
                         ),
                       ),
-                      SizedBox(width: smallSpacing), // Responsive spacing
+                      SizedBox(width: smallSpacing),
                       Expanded(
                         child: _buildQuickActionCard(
                           context: context, // Pass context
@@ -1855,11 +1852,6 @@ class _HomePageState extends State<HomePage> {
                           title: 'View Events',
                           onTap: () {
                             context.push('/up_coming_events');
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('View Events Tapped'),
-                              ),
-                            );
                           },
                         ),
                       ),

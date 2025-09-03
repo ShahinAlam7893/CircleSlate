@@ -6,13 +6,13 @@ import 'package:circleslate/core/errors/exceptions.dart';
 import '../../core/network/endpoints.dart';
 
 class ApiBaseHelper {
-  final String _baseUrl = '${Urls.baseUrl}';
+  // final String _baseUrl = '${Urls.baseUrl}';
 
   // This method now returns the raw http.Response object.
   Future<http.Response> post(String url, dynamic body) async {
     try {
       final response = await http.post(
-        Uri.parse(_baseUrl + url),
+        Uri.parse(url),
         body: json.encode(body),
         headers: {'Content-Type': 'application/json'},
       );
@@ -28,7 +28,6 @@ class ApiBaseHelper {
     }
   }
 
-  // This method handles multipart requests and also returns the raw Response.
   Future<http.Response> postMultipart(
     String url,
     Map<String, String> fields, {
@@ -36,7 +35,7 @@ class ApiBaseHelper {
     required String fileField,
   }) async {
     try {
-      var request = http.MultipartRequest('POST', Uri.parse(_baseUrl + url));
+      var request = http.MultipartRequest('POST', Uri.parse(url));
 
       request.fields.addAll(fields);
 
@@ -68,7 +67,7 @@ class ApiBaseHelper {
       }
 
       final response = await http.put(
-        Uri.parse(_baseUrl + url),
+        Uri.parse(url),
         body: json.encode(body),
         headers: headers,
       );
@@ -93,7 +92,7 @@ class ApiBaseHelper {
     String fileField = 'file',
   }) async {
     try {
-      final uri = Uri.parse(_baseUrl + url);
+      final uri = Uri.parse(url);
       var request = http.MultipartRequest('PUT', uri);
 
       if (token != null) {
@@ -113,7 +112,7 @@ class ApiBaseHelper {
       );
       return await http.Response.fromStream(
         streamedResponse,
-      ); // ✅ FIXED: return raw response
+      );
     } catch (e) {
       throw FetchDataException('Failed to send multipart data: $e', url);
     }
@@ -128,7 +127,7 @@ class ApiBaseHelper {
       }
 
       final response = await http.get(
-        Uri.parse(_baseUrl + url),
+        Uri.parse(url),
         headers: headers,
       );
       return response;

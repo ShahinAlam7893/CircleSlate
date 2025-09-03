@@ -7,13 +7,11 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/services/user_search_service.dart';
-import '../../../../data/models/group_model.dart';
 import '../../../../data/models/user_search_result_model.dart';
 import '../../../routes/route_observer.dart';
 import '../conversation_service.dart';
-import '../../../data/models/chat_model.dart' hide ChatMessageStatus;
+import '../../../data/models/chat_model.dart';
 import '../../../common_providers/auth_provider.dart';
-
 
 class ChatListPage extends StatefulWidget {
   const ChatListPage({super.key});
@@ -53,7 +51,6 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
     }
   }
 
-
   DateTime _parseChatTime(String timeStr) {
     if (timeStr.isEmpty) {
       return DateTime.fromMillisecondsSinceEpoch(0);
@@ -66,7 +63,6 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
 
     int? timestamp = int.tryParse(timeStr);
     if (timestamp != null) {
-
       if (timestamp < 1000000000000) {
         return DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
       } else {
@@ -94,8 +90,12 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
         _userList = chatList;
         _sortChatsByUnreadAndRecent();
       });
+      debugPrint('[ChatListPage] Refreshed chats: ${_userList.length} chats loaded');
     }).catchError((e) {
-      debugPrint('Error refreshing chat list: $e');
+      debugPrint('[ChatListPage] Error refreshing chat list: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to refresh chats: $e')),
+      );
     });
   }
 
@@ -182,7 +182,6 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
   Widget build(BuildContext context) {
     final isSearchMode = _searchController.text.trim().isNotEmpty;
 
-    // Show loading if profile is being loaded
     if (_isLoadingProfile) {
       return Scaffold(
         backgroundColor: Colors.grey[100],
@@ -248,40 +247,16 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                 }
 
                 debugPrint('[ChatListPage] Navigating to CreateGroupPage with currentUserId: $currentUserId');
-                debugPrint('[ChatListPage] Route path: ${RoutePaths.creategrouppage}');
-
-                // Try navigation with await to catch any errors
-                final result = await context.push(
-                    RoutePaths.creategrouppage,
-                    extra: {'currentUserId': currentUserId}
+                await context.push(
+                  RoutePaths.creategrouppage,
+                  extra: {'currentUserId': currentUserId},
                 );
-
-                debugPrint('[ChatListPage] Successfully navigated to CreateGroupPage, result: $result');
-
-                // Refresh chat list after returning from create group
                 _refreshChats();
-
               } catch (e) {
                 debugPrint('[ChatListPage] Error navigating to CreateGroupPage: $e');
-
-                // Fallback: try with hardcoded path
-                try {
-                  debugPrint('[ChatListPage] Trying fallback navigation with hardcoded path');
-                  await context.push(
-                      '/group_create',
-                      extra: {'currentUserId': currentUserId}
-                  );
-                  debugPrint('[ChatListPage] Fallback navigation successful');
-                  _refreshChats();
-                } catch (fallbackError) {
-                  debugPrint('[ChatListPage] Fallback navigation also failed: $fallbackError');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error navigating to Create Group: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error navigating to Create Group: $e')),
+                );
               }
             },
             child: const Text(
@@ -305,9 +280,10 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
               decoration: InputDecoration(
                 hintText: 'Search users...',
                 hintStyle: const TextStyle(
-                    color: AppColors.textColorSecondary, fontFamily: 'Poppins'),
-                prefixIcon: const Icon(Icons.search,
-                    color: AppColors.textColorPrimary),
+                  color: AppColors.textColorSecondary,
+                  fontFamily: 'Poppins',
+                ),
+                prefixIcon: const Icon(Icons.search, color: AppColors.textColorPrimary),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                   icon: const Icon(Icons.clear),
@@ -323,7 +299,9 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                   borderSide: BorderSide.none,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12.0, horizontal: 16.0),
+                  vertical: 12.0,
+                  horizontal: 16.0,
+                ),
               ),
             ),
           ),
@@ -337,9 +315,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
 
   Widget _buildSearchResults() {
     if (_isSearching) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_searchError != null) {
@@ -347,19 +323,12 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               _searchError!,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 16),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -376,18 +345,11 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: Colors.grey,
-            ),
+            Icon(Icons.search_off, size: 64, color: Colors.grey),
             SizedBox(height: 16),
             Text(
               'No users found',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.grey, fontSize: 16),
             ),
           ],
         ),
@@ -403,12 +365,11 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
       },
     );
   }
+
   Widget _buildUserSearchItem(BuildContext context, UserSearchResult user) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       elevation: 0,
       color: Colors.white,
       child: ListTile(
@@ -460,11 +421,8 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
           size: 12,
         ),
         onTap: () async {
-          // Try to get or create conversation before navigating
           try {
-            // Ensure user profile is loaded before proceeding
             await _ensureUserProfileLoaded();
-
             if (currentUserId == null || currentUserId!.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('User ID is missing. Please log in again.')),
@@ -472,10 +430,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
               return;
             }
 
-            debugPrint('[ChatListPage] Starting chat with user: ${user.fullName}');
-            debugPrint('[ChatListPage] currentUserId: $currentUserId');
-            debugPrint('[ChatListPage] partnerId: ${user.id}');
-
+            debugPrint('[ChatListPage] Starting chat with user: ${user.fullName}, imageUrl: ${user.profilePhotoUrl}');
             final conversationId = await ChatService.getOrCreateConversation(
               currentUserId!,
               user.id,
@@ -484,42 +439,22 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
 
             if (!mounted) return;
 
-            if (conversationId != null) {
-              debugPrint('[ChatListPage] Conversation created/found: $conversationId');
-              context.push(
-                RoutePaths.onetooneconversationpage,
-                extra: {
-                  'chatPartnerName': user.fullName,
-                  'chatPartnerId': user.id,
-                  'currentUserId': currentUserId,
-                  'isGroupChat': false,
-                  'isCurrentUserAdminInGroup': false,
-                  'conversationId': conversationId,
-                },
-              );
-            } else {
-              // If conversation creation fails, try to use a default conversation ID
-              // This is a fallback for when the server doesn't support conversation creation
-              debugPrint('[ChatListPage] Using fallback conversation approach');
-              context.push(
-                RoutePaths.onetooneconversationpage,
-                extra: {
-                  'chatPartnerName': user.fullName,
-                  'chatPartnerId': user.id,
-                  'currentUserId': currentUserId,
-                  'isGroupChat': false,
-                  'isCurrentUserAdminInGroup': false,
-                  'conversationId': null, // Let the chat screen handle conversation creation
-                },
-              );
-            }
+            context.push(
+              RoutePaths.onetooneconversationpage,
+              extra: {
+                'chatPartnerName': user.fullName,
+                'chatPartnerId': user.id,
+                'currentUserId': currentUserId,
+                'chatPartnerImageUrl': user.profilePhotoUrl, // Pass profile photo
+                'isGroupChat': false,
+                'isCurrentUserAdminInGroup': false,
+                'conversationId': conversationId,
+              },
+            );
           } catch (e) {
             debugPrint('[ChatListPage] Error starting chat: $e');
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Starting chat... Please wait.'),
-                duration: const Duration(seconds: 2),
-              ),
+              const SnackBar(content: Text('Failed to start chat. Please try again.')),
             );
           }
         },
@@ -527,25 +462,17 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
     );
   }
 
-
   Widget _buildChatList() {
     if (_userList.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.chat_bubble_outline,
-              size: 64,
-              color: Colors.grey,
-            ),
+            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
             SizedBox(height: 16),
             Text(
               'No active chats',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.grey, fontSize: 16),
             ),
           ],
         ),
@@ -557,15 +484,12 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
       itemCount: _userList.length,
       itemBuilder: (context, index) {
         final chat = _userList[index];
-        final groupChat = _userList[index];
-
-
-        return _buildChatItem(context, chat, groupChat);
+        return _buildChatItem(context, chat);
       },
     );
   }
 
-  Widget _buildChatItem(BuildContext context, Chat chat, Chat groupChat) {
+  Widget _buildChatItem(BuildContext context, Chat chat) {
     return GestureDetector(
       onTap: () {
         if (!chat.isGroupChat && chat.participants.isNotEmpty) {
@@ -581,35 +505,39 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
             return;
           }
 
+          debugPrint('[ChatListPage] Navigating to OneToOneConversationPage with imageUrl: ${chat.imageUrl}');
+          print( "=====++++" + chat.imageUrl.toString());
           context.push(
             RoutePaths.onetooneconversationpage,
             extra: {
               'chatPartnerName': chat.name,
               'chatPartnerId': partner['id'].toString(),
               'currentUserId': currentUserId,
+              'chatPartnerImageUrl': chat.imageUrl,
               'isGroupChat': false,
               'isCurrentUserAdminInGroup': false,
               'conversationId': chat.conversationId,
             },
           );
         } else {
+          debugPrint('[ChatListPage] Navigating to GroupConversationPage with imageUrl: ${chat.imageUrl}');
+
           context.push(
             RoutePaths.groupConversationPage,
             extra: {
-              'groupName': groupChat.name,
+              'groupName': chat.name,
               'isGroupChat': true,
-              'isCurrentUserAdminInGroup': groupChat.isCurrentUserAdminInGroup ?? false,
+              'isCurrentUserAdminInGroup': chat.isCurrentUserAdminInGroup ?? false,
               'currentUserId': currentUserId,
-              'conversationId': groupChat.conversationId,
+              'conversationId': chat.conversationId,
+              'groupImageUrl': chat.imageUrl, // Pass group image if needed
             },
           );
         }
       },
       child: Card(
         margin: const EdgeInsets.symmetric(vertical: 8.0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
         elevation: 0,
         color: Colors.white,
         child: Padding(
@@ -620,11 +548,13 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                 children: [
                   CircleAvatar(
                     radius: 28,
-                    backgroundImage: Image.asset(
-                      chat.imageUrl,
-                      errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.person),
-                    ).image,
+                    backgroundImage: chat.imageUrl.startsWith('http')
+                        ? NetworkImage(chat.imageUrl)
+                        : AssetImage(chat.imageUrl) as ImageProvider,
+                    onBackgroundImageError: (_, __) {
+                      debugPrint('[ChatListPage] Failed to load image: ${chat.imageUrl}');
+                    },
+                    child: chat.imageUrl.isEmpty ? const Icon(Icons.person) : null,
                   ),
                 ],
               ),
@@ -668,9 +598,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                         color: chat.unreadCount > 0
                             ? AppColors.textColorPrimary
                             : AppColors.textColorSecondary,
-                        fontWeight: chat.unreadCount > 0
-                            ? FontWeight.w500
-                            : FontWeight.w400,
+                        fontWeight: chat.unreadCount > 0 ? FontWeight.w500 : FontWeight.w400,
                         fontFamily: 'Poppins',
                       ),
                       maxLines: 1,
@@ -691,10 +619,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                         Flexible(
                           child: Text(
                             chat.time,
-                            style: const TextStyle(
-                              fontSize: 12.0,
-                              fontFamily: 'Poppins',
-                            ),
+                            style: const TextStyle(fontSize: 12.0, fontFamily: 'Poppins'),
                             softWrap: false,
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
@@ -702,24 +627,19 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                         ),
                         const SizedBox(width: 4.0),
                         if (chat.status == ChatMessageStatus.sent)
-                          Icon(Icons.check,
-                              size: 14, color: AppColors.textColorSecondary),
+                          Icon(Icons.check, size: 14, color: AppColors.textColorSecondary),
                         if (chat.status == ChatMessageStatus.delivered)
                           Row(
                             children: const [
-                              Icon(Icons.check,
-                                  size: 14, color: AppColors.textColorSecondary),
-                              Icon(Icons.check,
-                                  size: 14, color: AppColors.textColorSecondary),
+                              Icon(Icons.check, size: 14, color: AppColors.textColorSecondary),
+                              Icon(Icons.check, size: 14, color: AppColors.textColorSecondary),
                             ],
                           ),
                         if (chat.status == ChatMessageStatus.seen)
                           Row(
                             children: const [
-                              Icon(Icons.check,
-                                  size: 12, color: AppColors.primaryBlue),
-                              Icon(Icons.check,
-                                  size: 12, color: AppColors.primaryBlue),
+                              Icon(Icons.check, size: 12, color: AppColors.primaryBlue),
+                              Icon(Icons.check, size: 12, color: AppColors.primaryBlue),
                             ],
                           ),
                       ],
@@ -728,8 +648,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                       Padding(
                         padding: const EdgeInsets.only(top: 4.0),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0, vertical: 4.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                           decoration: BoxDecoration(
                             color: AppColors.primaryBlue,
                             borderRadius: BorderRadius.circular(12.0),

@@ -3,12 +3,13 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../../data/models/group_model.dart';
+import '../../../data/models/conversation_model.dart';
 
 class GroupConversationManager {
   static const String baseUrl = 'http://72.60.26.57/api/chat';
 
-  static Future<GroupChat> createGroupConversation(
+  /// Create a new group conversation
+  static Future<Conversation> createGroupConversation(
       String currentUserId,
       List<String> participantIds,
       String groupName,
@@ -24,6 +25,7 @@ class GroupConversationManager {
         throw Exception('No access token found');
       }
 
+      // Add current user to the participants list
       final allParticipantIds = [currentUserId, ...participantIds];
 
       final payload = {
@@ -31,7 +33,8 @@ class GroupConversationManager {
         'participant_ids': allParticipantIds,
       };
 
-      debugPrint('[GroupConversationManager] Creating group with payload: $payload');
+      debugPrint(
+          '[GroupConversationManager] Creating group with payload: $payload');
 
       final response = await http.post(
         Uri.parse('$baseUrl/conversations/create-group/'),
@@ -43,14 +46,17 @@ class GroupConversationManager {
         body: jsonEncode(payload),
       );
 
-      debugPrint('[GroupConversationManager] Response status: ${response.statusCode}');
-      debugPrint('[GroupConversationManager] Response body: ${response.body}');
+      debugPrint(
+          '[GroupConversationManager] Response status: ${response.statusCode}');
+      debugPrint(
+          '[GroupConversationManager] Response body: ${response.body}');
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        return GroupChat.fromJson(data, currentUserId: '');
+        return Conversation.fromJson(data['conversation']);
       } else {
-        throw Exception('Failed to create group: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Failed to create group: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       debugPrint('[GroupConversationManager] Error creating group: $e');

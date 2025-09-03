@@ -18,7 +18,6 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   void _confirmDeleteAccount() {
 
     print('Attempting to delete account...');
-    // Simulate a delay for API call
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -99,7 +98,6 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               ),
               const SizedBox(height: 40),
 
-              // Warning Box
               Container(
                 padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(

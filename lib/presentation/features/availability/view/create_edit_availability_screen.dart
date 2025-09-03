@@ -209,28 +209,28 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
             const SizedBox(height: 16.0),
             _buildRepeatScheduleOptions(),
 
-            Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  context.push('/availability_preview');
-                },
-                style: ElevatedButton.styleFrom(
-                  shadowColor: Color(0x1A000000),
-                  backgroundColor: AppColors.primaryBlue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 10.0,
-                    horizontal: 20.0,
-                  ), // Added horizontal padding
-                ),
-                child: const Text(
-                  'Preview',
-                  style: TextStyle(color: Colors.white, fontSize: 14.0),
-                ),
-              ),
-            ),
+            // Center(
+            //   child: ElevatedButton(
+            //     onPressed: () {
+            //       context.push('/availability_preview');
+            //     },
+            //     style: ElevatedButton.styleFrom(
+            //       shadowColor: Color(0x1A000000),
+            //       backgroundColor: AppColors.primaryBlue,
+            //       shape: RoundedRectangleBorder(
+            //         borderRadius: BorderRadius.circular(8.0),
+            //       ),
+            //       padding: const EdgeInsets.symmetric(
+            //         vertical: 10.0,
+            //         horizontal: 20.0,
+            //       ), // Added horizontal padding
+            //     ),
+            //     child: const Text(
+            //       'Preview',
+            //       style: TextStyle(color: Colors.white, fontSize: 14.0),
+            //     ),
+            //   ),
+            // ),
 
             const SizedBox(height: 30.0),
             Row(

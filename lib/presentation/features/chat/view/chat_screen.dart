@@ -13,19 +13,23 @@ import 'package:http/http.dart' as http;
 import 'package:circleslate/core/utils/user_image_helper.dart';
 import 'package:provider/provider.dart';
 import 'package:circleslate/presentation/common_providers/auth_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class OneToOneConversationPage extends StatefulWidget {
   final String chatPartnerName;
   final String currentUserId;
   final String chatPartnerId;
   final String? conversationId;
+  final String? chatPartnerImageUrl;
 
   const OneToOneConversationPage({
     super.key,
     required this.chatPartnerName,
     required this.currentUserId,
     required this.chatPartnerId,
-    this.conversationId, required isadmin,
+    this.conversationId,
+    this.chatPartnerImageUrl,
+    required bool isadmin, required,
   });
 
   @override
@@ -46,19 +50,55 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
   bool _isPartnerTyping = false;
   bool _isLoadingMessages = false;
   DateTime? _lastMessageTime;
-  String? _chatPartnerImageUrl; // Store chat partner's image URL
+  String? _chatPartnerImageUrl;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    _chatPartnerImageUrl = widget.chatPartnerImageUrl;
+    setState(() {
+
+    });
     debugPrint('[OneToOneConversationPage] initState: currentUser=${widget.currentUserId} partner=${widget.chatPartnerId} conversationId=${widget.conversationId}');
+    debugPrint('[OneToOneConversationPage] Chat partner image URL: $_chatPartnerImageUrl');
+    if (_chatPartnerImageUrl == null || _chatPartnerImageUrl!.isEmpty) {
+      _loadChatPartnerImage();
+    }
     _initializeConversation();
     _messageController.addListener(_handleTyping);
     _messageController.addListener(() {
-      // Trigger rebuild to update send button state
       if (mounted) setState(() {});
     });
+
+  }
+
+  Future<void> _loadChatPartnerImage() async {
+    try {
+      String? imageUrl = widget.chatPartnerImageUrl;
+
+      if (imageUrl == null || imageUrl.isEmpty) {
+        debugPrint('[OneToOneConversationPage] No chat partner image URL provided, fetching from API');
+        imageUrl = await UserImageHelper.getUserImageUrl(widget.chatPartnerId);
+      }
+      if (imageUrl == null || imageUrl.isEmpty) {
+        debugPrint('[OneToOneConversationPage] No image URL available, using default');
+        imageUrl = 'assets/images/default_user.png';
+      } else if (!imageUrl.startsWith('http')) {
+        imageUrl = 'http://72.60.26.57$imageUrl';
+      }
+      setState(() {
+        _chatPartnerImageUrl = imageUrl;
+      });
+      debugPrint('[OneToOneConversationPage] Chat partner image loaded: $imageUrl');
+
+    } catch (e) {
+      debugPrint('[OneToOneConversationPage] Error loading chat partner image: $e');
+      setState(() {
+        _chatPartnerImageUrl = 'assets/images/default_user.png';
+      });
+    }
   }
 
   @override
@@ -100,12 +140,8 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
         _isConversationReady = true;
       });
 
-      // Load chat partner's image
-      await _loadChatPartnerImage();
-
       await _loadMessagesFromLocal();
       await _connectWebSocket();
-      // Don't call _loadMessagesFromServer() since we're using WebSocket for conversation messages
       await _sendPendingMessages();
 
       setState(() {
@@ -124,20 +160,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
     }
   }
 
-  /// Load chat partner's profile image
-  Future<void> _loadChatPartnerImage() async {
-    try {
-      final imageUrl = await UserImageHelper.getUserImageUrl(widget.chatPartnerId);
-      setState(() {
-        _chatPartnerImageUrl = imageUrl;
-      });
-      debugPrint('[OneToOneConversationPage] Chat partner image loaded: $imageUrl');
-    } catch (e) {
-      debugPrint('[OneToOneConversationPage] Error loading chat partner image: $e');
-    }
-  }
-
-
   Future<void> _loadMessagesFromLocal() async {
     if (_conversationId == null) return;
     try {
@@ -154,27 +176,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
     } catch (e) {
       debugPrint('[OneToOneConversationPage] Error loading messages from local storage: $e');
       await MessageStorageService.clearMessages(_conversationId!);
-    }
-  }
-
-  Future<void> _loadMessagesFromServer() async {
-    if (_conversationId == null) return;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('accessToken');
-      if (token == null) throw Exception('No access token found');
-
-      // Based on the Django URL patterns, the correct endpoint is:
-      // /api/chat/messages/{conversation_id}/send/ for sending messages
-      // But for fetching messages, we need to check if there's a different endpoint
-      // For now, we'll skip server message loading since the endpoint doesn't exist
-      // Messages will be loaded via WebSocket instead
-
-      debugPrint('[OneToOneConversationPage] Skipping server message loading - endpoint not available');
-      debugPrint('[OneToOneConversationPage] Messages will be loaded via WebSocket and local storage');
-
-    } catch (e) {
-      debugPrint('[OneToOneConversationPage] Error loading messages from server: $e');
     }
   }
 
@@ -251,8 +252,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       });
 
       _markMessagesAsRead();
-
-      // Request conversation messages from server via WebSocket
       _requestConversationMessages();
     } catch (e) {
       debugPrint('[OneToOneConversationPage] Error connecting WebSocket: $e');
@@ -273,7 +272,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       _chatSocketService.sendRawMessage(jsonEncode(request));
       debugPrint('[OneToOneConversationPage] Requested conversation messages');
 
-      // Set a timeout to stop loading if no response received
       Timer(const Duration(seconds: 10), () {
         if (mounted && _isLoadingMessages) {
           setState(() {
@@ -298,24 +296,28 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
 
       for (var msgData in messagesData) {
         try {
-          // Handle different API response structures
+          debugPrint('[OneToOneConversationPage] Processing message: $msgData');
           final String messageId = msgData['id']?.toString() ?? '';
           final String content = msgData['content']?.toString() ?? '';
           final String timestamp = msgData['timestamp']?.toString() ?? '';
 
-          // Handle sender information - API might send sender as object or ID
           String senderId;
           if (msgData['sender'] is Map) {
             senderId = msgData['sender']['id']?.toString() ?? '';
           } else {
             senderId = msgData['sender_id']?.toString() ?? msgData['sender']?.toString() ?? '';
           }
+          debugPrint('[OneToOneConversationPage] Parsed senderId: $senderId');
+
+          if (senderId.isEmpty || senderId == 'currentUserId') {
+            debugPrint('[OneToOneConversationPage] Invalid senderId, skipping message: $msgData');
+            continue;
+          }
 
           final bool isRead = msgData['is_read'] == true;
           final bool isDelivered = msgData['is_delivered'] == true;
           final String? clientMessageId = msgData['client_message_id']?.toString();
 
-          // Parse timestamp safely
           DateTime messageTime;
           try {
             messageTime = DateTime.parse(timestamp);
@@ -324,20 +326,18 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
             messageTime = DateTime.now();
           }
 
-          // Get real user image URL instead of static images
           String? senderImageUrl;
           if (senderId == widget.currentUserId) {
             senderImageUrl = UserImageHelper.getCurrentUserImageUrl(context);
           } else {
-            // Other user - try to get from message data first, then API
-            if (msgData['sender'] is Map && msgData['sender']['profile_photo'] != null) {
-              String imageUrl = msgData['sender']['profile_photo'].toString();
-              if (imageUrl.isNotEmpty) {
-                if (!imageUrl.startsWith('http')) {
-                  imageUrl = 'http://72.60.26.57$imageUrl';
-                }
-                senderImageUrl = imageUrl;
+            if (msgData['sender'] is Map && msgData['sender']['profile_photo_url'] != null) {
+              String imageUrl = msgData['sender']['profile_photo_url'].toString();
+              if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
+                imageUrl = 'http://72.60.26.57$imageUrl';
               }
+              senderImageUrl = imageUrl;
+            } else {
+              senderImageUrl = await UserImageHelper.getUserImageUrl(senderId);
             }
           }
 
@@ -347,24 +347,20 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
             timestamp: messageTime,
             sender: senderId == widget.currentUserId ? MessageSender.user : MessageSender.other,
             senderId: senderId,
-            senderImageUrl: senderImageUrl, // Use real image URL or null for fallback
+            senderImageUrl: senderImageUrl,
             status: isRead ? MessageStatus.seen : isDelivered ? MessageStatus.delivered : MessageStatus.sent,
             clientMessageId: clientMessageId,
           );
 
           newMessages.add(message);
         } catch (e) {
-          debugPrint('[OneToOneConversationPage] Error processing message in conversation: $e');
+          debugPrint('[OneToOneConversationPage] Error processing message: $e');
         }
       }
 
-      // Sort messages by timestamp
       newMessages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-
-      // Save to local storage
       await MessageStorageService.saveMessages(_conversationId!, newMessages);
 
-      // Update UI
       setState(() {
         _messages.clear();
         _messages.addAll(newMessages);
@@ -376,29 +372,24 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
 
       _scrollToBottom();
       debugPrint('[OneToOneConversationPage] Loaded ${newMessages.length} conversation messages');
-
     } catch (e) {
       debugPrint('[OneToOneConversationPage] Error loading conversation messages: $e');
     }
   }
 
-
   void _addMessageFromServer(Map<String, dynamic> msgData) async {
     debugPrint('[OneToOneConversationPage] _addMessageFromServer payload: $msgData');
 
     try {
-      // Handle different API response structures
       final String messageId = msgData['id']?.toString() ?? msgData['message_id']?.toString() ?? '';
       final String content = msgData['content']?.toString() ?? msgData['text']?.toString() ?? '';
       final String timestamp = msgData['timestamp']?.toString() ?? '';
 
-      // Validate required fields
       if (messageId.isEmpty || content.isEmpty) {
         debugPrint('[OneToOneConversationPage] Invalid message data: missing id or content');
         return;
       }
 
-      // Handle sender information
       String senderId;
       String? senderImageUrl;
       if (msgData['sender'] is Map) {
@@ -411,19 +402,18 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       } else {
         senderId = msgData['sender_id']?.toString() ?? msgData['sender']?.toString() ?? '';
       }
+      debugPrint('[OneToOneConversationPage] Parsed senderId: $senderId');
 
-      if (senderId.isEmpty) {
-        debugPrint('[OneToOneConversationPage] Invalid message data: missing sender_id');
+      if (senderId.isEmpty || senderId == 'currentUserId') {
+        debugPrint('[OneToOneConversationPage] Invalid senderId, skipping message');
         return;
       }
 
-      // Skip own messages to avoid duplicates
       if (senderId == widget.currentUserId) {
         debugPrint('[OneToOneConversationPage] Skipping own message: $messageId');
         return;
       }
 
-      // Parse timestamp
       DateTime messageTime;
       try {
         messageTime = DateTime.parse(timestamp);
@@ -432,20 +422,14 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
         messageTime = DateTime.now();
       }
 
-      // Determine message status
       final bool isRead = msgData['is_read'] == true;
       final bool isDelivered = msgData['is_delivered'] == true;
       final String? clientMessageId = msgData['client_message_id']?.toString();
       final status = isRead ? MessageStatus.seen : isDelivered ? MessageStatus.delivered : MessageStatus.sent;
 
-      // Fetch sender image if not provided
       if (senderImageUrl == null || senderImageUrl.isEmpty) {
-        try {
-          senderImageUrl = await UserImageHelper.getUserImageUrl(senderId);
-          debugPrint('[OneToOneConversationPage] Fetched image for user $senderId: $senderImageUrl');
-        } catch (e) {
-          debugPrint('[OneToOneConversationPage] Error fetching image for user $senderId: $e');
-        }
+        senderImageUrl = await UserImageHelper.getUserImageUrl(senderId);
+        debugPrint('[OneToOneConversationPage] Fetched image for user $senderId: $senderImageUrl');
       }
 
       final message = StoredMessage(
@@ -459,7 +443,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
         clientMessageId: clientMessageId,
       );
 
-      // Check for duplicates using both messageId and clientMessageId
       final existingMessage = _messages.any((m) =>
       m.id == messageId || (m.clientMessageId != null && m.clientMessageId == clientMessageId));
       if (existingMessage) {
@@ -467,7 +450,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
         return;
       }
 
-      // Replace temporary message
       await MessageStorageService.replaceTemporaryMessage(
         _conversationId!,
         clientMessageId ?? '',
@@ -484,10 +466,7 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
 
         _scrollToBottom();
         _markMessagesAsRead();
-
         debugPrint('[OneToOneConversationPage] Message added to UI: ${message.text} (id: $messageId)');
-      } else {
-        debugPrint('[OneToOneConversationPage] Widget not mounted, skipping UI update for message: $messageId');
       }
     } catch (e) {
       debugPrint('[OneToOneConversationPage] Error processing message from server: $e');
@@ -495,7 +474,7 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
   }
 
   void _updateMessageStatuses(List<String> messageIds, MessageStatus status) async {
-    debugPrint('[OneToOneConversationPage] updating ${messageIds.length} message statuses => $status');
+    debugPrint('[OneToOneConversationPage] Updating ${messageIds.length} message statuses => $status');
     for (var messageId in messageIds) {
       await MessageStorageService.updateMessageStatus(_conversationId!, messageId, status);
     }
@@ -536,7 +515,7 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       timestamp: DateTime.now(),
       sender: MessageSender.user,
       senderId: widget.currentUserId,
-      senderImageUrl: UserImageHelper.getCurrentUserImageUrl(context), // Use real user image
+      senderImageUrl: UserImageHelper.getCurrentUserImageUrl(context),
       status: MessageStatus.sending,
       clientMessageId: clientMessageId,
     );
@@ -553,35 +532,29 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
     await MessageStorageService.addMessage(_conversationId!, message);
 
     try {
-      // Send via WebSocket first for real-time delivery
       _chatSocketService.sendMessage(
         message.text,
         widget.chatPartnerId,
         clientMessageId,
       );
 
-      // Also send via HTTP API as backup (using the correct endpoint from Django URLs)
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('accessToken');
       if (token != null) {
-        try {
-          final url = Uri.parse('http://72.60.26.57/api/chat/messages/$_conversationId/send/');
-          final response = await http.post(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({
-              'content': message.text,
-              'receiver_id': widget.chatPartnerId,
-              'client_message_id': clientMessageId,
-            }),
-          );
-          debugPrint('[OneToOneConversationPage] HTTP API response: ${response.statusCode}');
-        } catch (e) {
-          debugPrint('[OneToOneConversationPage] HTTP API error (non-critical): $e');
-        }
+        final url = Uri.parse('http://72.60.26.57/api/chat/messages/$_conversationId/send/');
+        final response = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'content': message.text,
+            'receiver_id': widget.chatPartnerId,
+            'client_message_id': clientMessageId,
+          }),
+        );
+        debugPrint('[OneToOneConversationPage] HTTP API response: ${response.statusCode}');
       }
 
       await MessageStorageService.updateMessageStatus(
@@ -620,7 +593,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
     WidgetsBinding.instance.removeObserver(this);
     _messageController.removeListener(_handleTyping);
     _chatSocketService.dispose();
-
     super.dispose();
   }
 
@@ -635,7 +607,8 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
         ),
         title: Row(
           children: [
-            // Chat partner avatar
+
+
             UserImageHelper.buildUserAvatarWithErrorHandling(
               imageUrl: _chatPartnerImageUrl,
               radius: 18,
@@ -643,7 +616,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
               iconColor: Colors.grey[600],
             ),
             const SizedBox(width: 12),
-            // Chat partner name and typing indicator
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -663,7 +635,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
           ],
         ),
         actions: [
-          // Connection status indicator
           Container(
             margin: const EdgeInsets.only(right: 16.0),
             child: _chatSocketService.isConnected
@@ -696,11 +667,7 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.chat_bubble_outline,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
+                  Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
                   SizedBox(height: 16),
                   Text(
                     'No messages yet. Start the conversation!',
@@ -713,7 +680,7 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
               controller: _scrollController,
               padding: const EdgeInsets.all(16.0),
               itemCount: _messages.length,
-              itemBuilder: (context, index) => _buildMessageBubble(_messages[index]),
+              itemBuilder: (context, index) => _buildMessageBubble(_messages[index], widget.currentUserId),
             ),
           ),
           _buildMessageInput(),
@@ -722,8 +689,9 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
     );
   }
 
-  Widget _buildMessageBubble(StoredMessage message) {
-    final bool isUser = message.sender == MessageSender.user;
+  Widget _buildMessageBubble(StoredMessage message, String currentUserId) {
+    final bool isUser = message.senderId == currentUserId;
+    debugPrint('[OneToOneConversationPage] isUser: $isUser, senderId: ${message.senderId}, currentUserId: $currentUserId');
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,

@@ -7,9 +7,6 @@ import 'package:circleslate/presentation/common_providers/auth_provider.dart';
 import 'package:circleslate/presentation/widgets/auth_input_field.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Note: Assuming AppColors, AppAssets, and AuthInputField exist in your project
-// as separate files. We will not redefine them here.
-
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -30,35 +27,29 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // This is the function that will be called on button press
   void _handleLogin(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     if (_formKey.currentState!.validate()) {
-      // Show loading indicator
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Processing...')),
       );
 
+      print('Attempting login with email: ${_emailController.text}');
       final success = await authProvider.loginUser(
         email: _emailController.text,
         password: _passwordController.text,
       );
 
       if (success) {
-
-        // Handle successful login
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Login successful!'),
             backgroundColor: AppColors.primaryBlue,
           ),
         );
-        // Navigate to the home page
-        // context.goNamed('home'); // Assuming you have a named route for home
         context.go('/home');
       } else {
-        // Handle failed login, show the error message from the provider
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(authProvider.errorMessage ?? 'Login failed.'),
@@ -71,7 +62,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    // We use a Consumer to listen to the provider's state, specifically for loading
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         return Scaffold(

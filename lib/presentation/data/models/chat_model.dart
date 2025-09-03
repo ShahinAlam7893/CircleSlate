@@ -34,22 +34,42 @@ class Chat {
   });
 
   factory Chat.fromJson(Map<String, dynamic> json, {required String currentUserId}) {
+    print("🔍 Raw Chat JSON: $json");
+
     final lastMsg = json['last_message'];
     final participants = json['participants'] as List<dynamic>? ?? [];
-    final firstParticipant = participants.isNotEmpty ? participants[0] : null;
+
+    // Pick the "other" participant for 1-to-1 chat
+    final otherParticipant = participants.firstWhere(
+          (p) => p['id'].toString() != currentUserId.toString(),
+      orElse: () => null,
+    );
+
+    // Decide image source
+    String imageUrl;
+    if (json['is_group'] == true) {
+      imageUrl = json['display_photo'] ?? 'assets/images/default_group.png';
+    } else {
+      imageUrl = otherParticipant != null && otherParticipant['profile_photo_url'] != null
+          ? otherParticipant['profile_photo_url']
+          : 'assets/images/default_user.png';
+    }
+
+    print("📌 Chosen imageUrl: $imageUrl");
+
     return Chat(
       conversationId: json['conversationId'] ?? json['id'] ?? 'Unknown',
-      name: json['display_name'] ?? json['name'] ?? 'Unknown',
+      name: json['display_name'] ?? otherParticipant?['full_name'] ?? json['name'] ?? 'Unknown',
       lastMessage: lastMsg != null ? lastMsg['content'] ?? '' : '',
       time: lastMsg != null ? lastMsg['timestamp'] ?? '' : '',
-      imageUrl: 'assets/images/default_user.png',
+      imageUrl: imageUrl,
       unreadCount: json['unread_count'] ?? 0,
-      isOnline: firstParticipant != null ? firstParticipant['is_online'] ?? false : false,
+      isOnline: otherParticipant != null ? otherParticipant['is_online'] ?? false : false,
       status: ChatMessageStatus.seen,
       isGroupChat: json['is_group'] ?? false,
       isCurrentUserAdminInGroup: json['user_role'] == 'admin',
       participants: participants,
+      currentUserId: currentUserId,
     );
   }
-
 }

@@ -19,7 +19,7 @@ import 'package:http/http.dart' as http;
 
 class GroupConversationPage extends StatefulWidget {
   final String groupId;       // This is the unique group ID
-  final String currentUserId; // Current logged-in user ID
+  final String currentUserId;
   final String groupName;     // This is the display name of the group
 
   const GroupConversationPage({
@@ -69,6 +69,8 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
       // Trigger rebuild to update send button state
       if (mounted) setState(() {});
     });
+
+
   }
 
   @override
@@ -236,10 +238,12 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
   void _handleConversationMessages(List<dynamic> messagesData) async {
     debugPrint('[GroupConversationPage] Processing ${messagesData.length} conversation messages');
 
+    print("current user id ===> ${widget.currentUserId}");
     try {
       final List<StoredMessage> newMessages = [];
 
       for (var msgData in messagesData) {
+
         try {
           final message = Message.fromJson(msgData);
           String? senderImageUrl = await _getUserImageUrl(message.senderId);
@@ -619,7 +623,7 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
               controller: _scrollController,
               padding: const EdgeInsets.all(16.0),
               itemCount: _messages.length,
-              itemBuilder: (context, index) => _buildMessageBubble(_messages[index]),
+              itemBuilder: (context, index) => _buildMessageBubble(_messages[index], widget.currentUserId),
             ),
           ),
           _buildMessageInput(),
@@ -628,8 +632,10 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
     );
   }
 
-  Widget _buildMessageBubble(StoredMessage message) {
-    final bool isUser = message.sender == MessageSender.user;
+  Widget _buildMessageBubble(StoredMessage message, String currentUserId) {
+    final bool isUser = message.senderId == currentUserId;
+    print("isUser: $isUser, senderId: ${message.senderId}");
+    print("fshkjsdgh ${widget.currentUserId}");
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -689,6 +695,7 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
       ),
     );
   }
+
 
   Widget _buildMessageStatusIcon(MessageStatus status) {
     switch (status) {

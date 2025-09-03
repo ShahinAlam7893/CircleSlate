@@ -1,13 +1,11 @@
 import 'dart:io';
-import 'package:circleslate/core/constants/app_colors.dart';
-import 'package:circleslate/data/services/api_base_helper.dart'; // Ensure this is correctly imported if needed
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart'; // REQUIRED for image picking
 import 'package:provider/provider.dart';
-import 'dart:convert'; // REQUIRED for jsonEncode/decode if used directly here, but AuthProvider handles it
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../../../common_providers/auth_provider.dart';
+import 'package:circleslate/core/constants/app_colors.dart';
 
 class AuthInputField extends StatefulWidget {
   final TextEditingController controller;
@@ -74,14 +72,10 @@ class _AuthInputFieldState extends State<AuthInputField> {
         contentPadding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
         suffixIcon: widget.isPassword
             ? IconButton(
-          icon: Icon(
-            _obscureText ? Icons.visibility : Icons.visibility_off,
-            color: AppColors.textColorSecondary,
-          ),
+          icon: Icon(_obscureText ? Icons.visibility : Icons.visibility_off, color: AppColors.textColorSecondary),
           onPressed: () {
-            setState(() {
-              _obscureText = !_obscureText;
-            });
+            if (!mounted) return;
+            setState(() => _obscureText = !_obscureText);
           },
         )
             : widget.suffixIcon,
@@ -117,10 +111,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _mobileController;
   late List<TextEditingController> _childNameControllers;
   late List<TextEditingController> _childAgeControllers;
-  late String _currentProfileImageUrl;
+  String _currentProfileImageUrl = '';
   File? _pickedImageFile;
-
   bool _isSaving = false;
+
   @override
   void initState() {
     super.initState();
@@ -138,30 +132,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final profile = authProvider.userProfile ?? {};
 
       final children = (profile["profile"]?["children"] as List?) ?? [];
-      if (children.isNotEmpty) {
-        setState(() {
-          _childNameControllers = children
-              .map((c) => TextEditingController(text: c["name"] ?? ""))
-              .toList();
-          _childAgeControllers = children
-              .map((c) => TextEditingController(text: c["age"]?.toString() ?? ""))
-              .toList();
-        });
-      } else {
-        setState(() {
+      if (!mounted) return;
+      setState(() {
+        if (children.isNotEmpty) {
+          _childNameControllers = children.map((c) => TextEditingController(text: c["name"] ?? "")).toList();
+          _childAgeControllers = children.map((c) => TextEditingController(text: c["age"]?.toString() ?? "")).toList();
+        } else {
           _childNameControllers = [TextEditingController()];
           _childAgeControllers = [TextEditingController()];
-        });
-      }
+        }
 
-      if (profile["profile_photo"] != null && profile["profile_photo"].toString().isNotEmpty) {
-        setState(() {
+        if (profile["profile_photo"] != null && profile["profile_photo"].toString().isNotEmpty) {
           _currentProfileImageUrl = profile["profile_photo"];
-        });
-      }
+        }
+      });
     });
   }
-
 
   @override
   void dispose() {
@@ -174,6 +160,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   void _addChildField() {
+    if (!mounted) return;
     setState(() {
       _childNameControllers.add(TextEditingController());
       _childAgeControllers.add(TextEditingController());
@@ -181,6 +168,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   void _removeChildField(int index) {
+    if (!mounted) return;
     setState(() {
       _childNameControllers[index].dispose();
       _childAgeControllers[index].dispose();
@@ -189,122 +177,92 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
   }
 
-  // --- IMAGE PICKING LOGIC ---
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    // Allows picking an image from the gallery. imageQuality helps reduce file size.
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-      setState(() {
-        _pickedImageFile = File(pickedFile.path); // Store the picked image file
-        _currentProfileImageUrl = ''; // Clear the network image URL as a new image is selected
-      });
-    }
-  }
-
-
-
-  // Save profile with proper API integration
-  void _saveProfile() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isSaving = true;
-      });
-
-      try {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        if (!authProvider.isLoggedIn) {
-          _showErrorMessage('Please login first');
-          if (mounted) context.go('/login');
-          return;
-        }
-
-        // Prepare update data
-        Map<String, dynamic> updateData = {
-          'full_name': _fullNameController.text.trim(),
-          'phone_number': _mobileController.text.trim(),
-        };
-
-        // Add profile image if selected
-        if (_pickedImageFile != null) {
-          updateData['profile_image'] = _pickedImageFile!.path;
-        }
-
-        // Update profile
-        bool profileUpdated = await authProvider.updateUserProfile(updateData);
-
-        if (profileUpdated) {
-          // Refresh user data to get the latest profile photo URL
-          await authProvider.refreshUserData();
-
-          // Update local profile image URL
-          setState(() {
-            _currentProfileImageUrl = authProvider.userProfile?['profile_photo'] ?? _currentProfileImageUrl;
-          });
-
-          // Add children by calling API individually
-          bool allChildrenSuccess = true;
-          for (int i = 0; i < _childNameControllers.length; i++) {
-            String name = _childNameControllers[i].text.trim();
-            int age = int.tryParse(_childAgeControllers[i].text.trim()) ?? 0;
-
-            if (name.isNotEmpty && age > 0) {
-              bool success = await authProvider.addChild(name, age);
-              if (!success) {
-                allChildrenSuccess = false;
-                _showErrorMessage('Failed to add child $name');
-              }
-            }
-          }
-
-          if (mounted) {
-            // Return updated data to profile page
-            final updatedData = {
-              'fullName': _fullNameController.text.trim(),
-              'email': _emailController.text.trim(),
-              'mobile': _mobileController.text.trim(),
-              'children': _childNameControllers.asMap().entries.map((entry) {
-                int index = entry.key;
-                TextEditingController controller = entry.value;
-                return {
-                  'name': controller.text.trim(),
-                  'age': _childAgeControllers[index].text.trim(),
-                };
-              }).toList(),
-              'profileImageUrl': authProvider.userProfile?['profile_photo'] ?? _currentProfileImageUrl,
-            };
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Profile updated successfully!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-
-            // Pop with updated data
-            context.pop(updatedData);
-          }
-        } else {
-          _showErrorMessage('Failed to update profile');
-        }
-      } catch (e) {
-        _showErrorMessage('Error updating profile: $e');
-      } finally {
-        if (mounted) setState(() => _isSaving = false);
+      final compressed = await _compressImage(pickedFile);
+      if (compressed != null) {
+        setState(() {
+          _pickedImageFile = File(compressed.path);
+        });
       }
     }
   }
 
-  void _showErrorMessage(String message) {
-    if (mounted) {
+  Future<XFile?> _compressImage(XFile pickedFile) async {
+    final compressedPath = '${pickedFile.path}_compressed.jpg';
+
+    final compressedFile = await FlutterImageCompress.compressAndGetFile(
+      pickedFile.path,
+      compressedPath,
+      quality: 70,
+    );
+    return compressedFile;
+  }
+
+
+  void _saveProfile() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    if (!mounted) return;
+    setState(() => _isSaving = true);
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (!authProvider.isLoggedIn) {
+        _showError('Please login first');
+        if (mounted) context.go('/login');
+        return;
+      }
+
+      Map<String, dynamic> updateData = {
+        'full_name': _fullNameController.text.trim(),
+        'phone_number': _mobileController.text.trim(),
+      };
+
+      if (_pickedImageFile != null) {
+        updateData['profile_image'] = _pickedImageFile!.path;
+      }
+
+      bool profileUpdated = await authProvider.updateUserProfile(updateData);
+      if (!profileUpdated) {
+        _showError('Failed to update profile');
+        return;
+      }
+
+      await authProvider.refreshUserData();
+      if (!mounted) return;
+      setState(() {
+        _currentProfileImageUrl = authProvider.userProfile?['profile_photo'] ?? _currentProfileImageUrl;
+      });
+
+      // Add children
+      for (int i = 0; i < _childNameControllers.length; i++) {
+        String name = _childNameControllers[i].text.trim();
+        int age = int.tryParse(_childAgeControllers[i].text.trim()) ?? 0;
+        if (name.isNotEmpty && age > 0) {
+          await authProvider.addChild(name, age);
+        }
+      }
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Profile updated successfully!'), backgroundColor: Colors.green),
       );
+      context.pop();
+    } catch (e) {
+      _showError('Error updating profile: $e');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  void _showError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+    );
   }
 
   @override
@@ -314,19 +272,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       appBar: AppBar(
         backgroundColor: AppColors.primaryBlue,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          'Edit Profile',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20.0,
-            fontWeight: FontWeight.w500,
-            fontFamily: 'Poppins',
-          ),
-        ),
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => context.pop()),
+        title: const Text('Edit Profile', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w500)),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -336,7 +283,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Profile Image Section
+              // Profile Image
               Center(
                 child: Stack(
                   children: [
@@ -345,17 +292,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       backgroundColor: Colors.grey.shade200,
                       backgroundImage: _pickedImageFile != null
                           ? FileImage(_pickedImageFile!)
-                          : (_currentProfileImageUrl.isNotEmpty
-                          ? NetworkImage(_currentProfileImageUrl)
-                          : null) as ImageProvider?,
-                      onBackgroundImageError: _currentProfileImageUrl.isNotEmpty
-                          ? (exception, stackTrace) {
-                        print('❌ Failed to load profile image: $exception');
-                        setState(() {
-                          _currentProfileImageUrl = '';
-                        });
-                      }
-                          : null,
+                          : (_currentProfileImageUrl.isNotEmpty ? NetworkImage(_currentProfileImageUrl) : null) as ImageProvider?,
                       child: _pickedImageFile == null && _currentProfileImageUrl.isEmpty
                           ? Icon(Icons.person, size: 60, color: Colors.grey.shade400)
                           : null,
@@ -364,14 +301,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       bottom: 0,
                       right: 0,
                       child: GestureDetector(
-                        onTap: _pickImage, // Tapping this icon calls _pickImage()
+                        onTap: _pickImage,
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryBlue,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
+                          decoration: BoxDecoration(color: AppColors.primaryBlue, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
                           child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
                         ),
                       ),
@@ -382,99 +315,37 @@ class _EditProfilePageState extends State<EditProfilePage> {
               const SizedBox(height: 24.0),
 
               // Full Name
-              const Text(
-                'Full Name',
-                style: TextStyle(
-                  fontSize: 14.0,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textColorPrimary,
-                ),
-              ),
+              const Text('Full Name', style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.w500, color: AppColors.textColorPrimary)),
               const SizedBox(height: 8.0),
-              AuthInputField(
-                controller: _fullNameController,
-                labelText: '',
-                hintText: 'Your full name',
-                validator: (v) => v == null || v.isEmpty ? 'Enter name' : null,
-              ),
+              AuthInputField(controller: _fullNameController, labelText: '', hintText: 'Your full name', validator: (v) => v == null || v.isEmpty ? 'Enter name' : null),
               const SizedBox(height: 20.0),
 
               // Email
-              const Text(
-                'Email',
-                style: TextStyle(
-                  fontSize: 14.0,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textColorPrimary,
-                ),
-              ),
+              const Text('Email', style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.w500, color: AppColors.textColorPrimary)),
               const SizedBox(height: 8.0),
-              AuthInputField(
-                controller: _emailController,
-                labelText: '',
-                hintText: 'Email',
-                keyboardType: TextInputType.emailAddress,
-                validator: (v) => v == null || v.isEmpty ? 'Enter email' : null,
-              ),
+              AuthInputField(controller: _emailController, labelText: '', hintText: 'Email', keyboardType: TextInputType.emailAddress, validator: (v) => v == null || v.isEmpty ? 'Enter email' : null),
               const SizedBox(height: 20.0),
 
               // Mobile
-              const Text(
-                'Mobile',
-                style: TextStyle(
-                  fontSize: 14.0,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textColorPrimary,
-                ),
-              ),
+              const Text('Mobile', style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.w500, color: AppColors.textColorPrimary)),
               const SizedBox(height: 8.0),
-              AuthInputField(
-                controller: _mobileController,
-                labelText: '',
-                hintText: 'Mobile',
-                keyboardType: TextInputType.phone,
-                validator: (v) => v == null || v.isEmpty ? 'Enter mobile' : null,
-              ),
+              AuthInputField(controller: _mobileController, labelText: '', hintText: 'Mobile', keyboardType: TextInputType.phone, validator: (v) => v == null || v.isEmpty ? 'Enter mobile' : null),
               const SizedBox(height: 20.0),
 
-              // My Children
+              // Children Section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'My Children',
-                    style: TextStyle(
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textColorPrimary,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _addChildField,
-                    child: const Text(
-                      '+ Add Another Child',
-                      style: TextStyle(
-                        fontSize: 14.0,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.primaryBlue,
-                      ),
-                    ),
-                  ),
+                  const Text('My Children', style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.w500, color: AppColors.textColorPrimary)),
+                  GestureDetector(onTap: _addChildField, child: const Text('+ Add Another Child', style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.w500, color: AppColors.primaryBlue))),
                 ],
               ),
               const SizedBox(height: 8.0),
               Container(
                 padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(color: AppColors.inputOutline, width: 1),
-                ),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12.0), border: Border.all(color: AppColors.inputOutline, width: 1)),
                 child: Column(
-                  children: List.generate(
-                    _childNameControllers.length,
-                        (i) => _buildChildInputField(i),
-                  ),
+                  children: List.generate(_childNameControllers.length, (i) => _buildChildInputField(i)),
                 ),
               ),
               const SizedBox(height: 30.0),
@@ -487,20 +358,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                   ),
                   child: _isSaving
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                    'Save',
-                    style: TextStyle(
-                      fontSize: 18.0,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                      : const Text('Save', style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
             ],
@@ -522,13 +384,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
               labelText: 'Child\'s Name',
               hintText: 'Enter name',
               validator: (v) {
-                // Optional: If empty, skip validation
                 if (v == null || v.trim().isEmpty) return null;
-
-                // Example: If not empty, check length
-                if (v.trim().length < 3) {
-                  return 'Name must be at least 3 characters';
-                }
+                if (v.trim().length < 3) return 'Name must be at least 3 characters';
                 return null;
               },
             ),
@@ -542,22 +399,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
               hintText: 'Age',
               keyboardType: TextInputType.number,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return null; // optional
-
+                if (v == null || v.trim().isEmpty) return null;
                 final age = int.tryParse(v.trim());
-                if (age == null || age <= 0) {
-                  return 'Enter a valid age';
-                }
+                if (age == null || age <= 0) return 'Enter a valid age';
                 return null;
               },
-
             ),
           ),
           if (index > 0)
-            IconButton(
-              icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-              onPressed: () => _removeChildField(index),
-            ),
+            IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.red), onPressed: () => _removeChildField(index)),
         ],
       ),
     );

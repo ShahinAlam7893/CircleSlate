@@ -426,17 +426,10 @@ class _NotificationPageState extends State<NotificationPage> {
           'eventTimestamp': notification.timestamp.toLocal().toString(),
         },
       );
-      // context.push(
-      //   '${RoutePaths.eventDetails}/:id',
-      //   extra: {
-      //     'eventId': notification.eventId,
-      //   },
-      // );
-
     }
 
     else if (notification.conversationId != null) {
-      if (!notification.isGroupChat) {
+      if (notification.isGroupChat) {
         context.push(
           '/group_conversation',
           extra: {

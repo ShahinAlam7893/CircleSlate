@@ -10,16 +10,7 @@ import 'package:circleslate/core/utils/profile_data_manager.dart';
 
 import '../../core/network/endpoints.dart';
 
-class ApiEndpoints {
-  static const String register = '/auth/register/';
-  static const String login = '/auth/login/';
-  static const String forgotPassword = '/auth/forgot-password/';
-  static const String verifyOtp = '/auth/verify-otp/';
-  static const String resetPassword = '/auth/change-password/';
-  static const String userProfile = '/auth/profile/';
-  static const String updateProfile = '/auth/profile/update/';
-  static const String conversations = '/auth/conversations'; // New API endpoint for conversations
-}
+
 
 class AuthProvider extends ChangeNotifier {
   final ApiBaseHelper _apiBaseHelper = ApiBaseHelper();
@@ -33,14 +24,14 @@ class AuthProvider extends ChangeNotifier {
   String? aToken;
   String? _refreshToken;
   Map<String, dynamic>? _userProfile;
-  List<dynamic> _conversations = []; // New: To store fetched conversations
+  List<dynamic> _conversations = [];
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   Map<String, dynamic>? get userProfile => _userProfile;
-  List<dynamic> get conversations => _conversations; // New: Getter for conversations
+  List<dynamic> get conversations => _conversations;
   bool get isLoggedIn => _accessToken != null;
-  
+
   // Getter for current user ID
   String? get currentUserId => _userProfile?['id']?.toString();
 
@@ -53,12 +44,12 @@ class AuthProvider extends ChangeNotifier {
     try {
       // Load tokens and cached profile
       await loadTokensFromStorage();
-      
+
       // If user is logged in, fetch fresh profile data
       if (_accessToken != null && _userProfile == null) {
         await fetchUserProfile();
       }
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('[AuthProvider] Error initializing user data: $e');
@@ -104,7 +95,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final response = await _apiBaseHelper.post(
-        ApiEndpoints.login,
+        Urls.login,
         {"email": email, "password": password},
       );
 
@@ -130,7 +121,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> addChild(String name, int age) async {
-    final url = Uri.parse('http://72.60.26.57/api/auth/children/');
+    final url = Uri.parse('${Urls.baseUrl}/auth/children/');
 
     final prefs = await SharedPreferences.getInstance();
     final savedAccessToken = prefs.getString('accessToken');
@@ -165,7 +156,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<List<Map<String, dynamic>>> fetchChildren() async {
-    final url = Uri.parse('http://72.60.26.57/api/auth/children/');
+    final url = Uri.parse('${Urls.baseUrl}/auth/children/');
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedAccessToken = prefs.getString('accessToken');
@@ -208,7 +199,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final response = await _apiBaseHelper.post(
-        ApiEndpoints.forgotPassword,
+        Urls.forgotPassword,
         {'email': email},
       );
 
@@ -229,7 +220,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final response = await _apiBaseHelper.post(
-        ApiEndpoints.verifyOtp,
+        Urls.verifyOtp,
         {'email': _userEmail, 'otp': otp},
       );
 
@@ -244,9 +235,6 @@ class AuthProvider extends ChangeNotifier {
       return _setError('OTP verification failed. Please try again.');
     }
   }
-
-
-  // -------------------- RESET PASSWORD --------------------
 
 
   // -------------------- UPDATE PASSWORD (Logged-in user) --------------------
@@ -267,7 +255,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final token = _accessToken;
-      final url = Uri.parse('${Urls.baseUrl}${ApiEndpoints.resetPassword}');
+      final url = Uri.parse('${Urls.baseUrl}${Urls.resetPassword}');
 
       final response = await http.put(
         url,
@@ -355,8 +343,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-
-
   // -------------------- FETCH USER PROFILE (For Home Screen) --------------------
   Future<bool> fetchUserProfile() async {
     print("🔍 fetchUserProfile() called");
@@ -369,7 +355,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final response = await _apiBaseHelper.get(
-        ApiEndpoints.userProfile,
+        Urls.userProfile,
         token: _accessToken,
       );
 
@@ -392,7 +378,7 @@ class AuthProvider extends ChangeNotifier {
         };
 
         print("✅ Parsed User Profile: $_userProfile");
-        
+
         // Save user ID to SharedPreferences for persistence
         await _saveUserProfileToStorage();
 
@@ -421,7 +407,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final response = await _apiBaseHelper.get(
-        ApiEndpoints.conversations,
+        Urls.conversations,
         token: _accessToken,
       );
 
@@ -445,40 +431,53 @@ class AuthProvider extends ChangeNotifier {
       print('🔄 Starting profile update...');
       print('📦 Updated data: $updatedData');
 
-      final token = _accessToken;
+      final token = _accessToken; // Direct access, no await needed
+      print('🔑 Token loaded: ${token != null ? 'Yes' : 'No'}');
+      print('🔑 Token loaded: ${token}');
+
       if (token == null) {
         print('❌ No token found. Cannot update profile.');
         return false;
       }
 
-      final uri = Uri.parse('http://72.60.26.57/api/auth/profile/update/');
+      final uri = Uri.parse('${Urls.baseUrl}/auth/profile/update/');
       final request = http.MultipartRequest('PATCH', uri);
 
+      // Authorization header
       request.headers['Authorization'] = 'Bearer $token';
 
+      // Text fields
       if (updatedData['full_name'] != null) {
         request.fields['full_name'] = updatedData['full_name'];
         print('📝 Added field: full_name = ${updatedData['full_name']}');
       }
 
+      // Profile phone number (nested field)
       if (updatedData['phone_number'] != null) {
         request.fields['profile.phone_number'] = updatedData['phone_number'];
         print('📞 Added field: profile.phone_number = ${updatedData['phone_number']}');
       }
 
+      // Children (if needed)
+      if (updatedData['children'] != null) {
+        request.fields['profile.children'] = jsonEncode(updatedData['children']);
+      }
+
+      // Profile photo
       if (updatedData['profile_image'] != null &&
           File(updatedData['profile_image']).existsSync()) {
         print('📷 Adding profile image: ${updatedData['profile_image']}');
-        var multipartFile = await http.MultipartFile.fromPath(
-          'profile_photo',
-          updatedData['profile_image'],
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'profile_photo', // API expects this name
+            updatedData['profile_image'],
+          ),
         );
-        request.files.add(multipartFile);
-        print('📤 File size: ${await multipartFile.length} bytes');
       } else {
-        print('⚠️ No valid profile image to upload or file does not exist.');
+        print('⚠️ No profile image to upload.');
       }
 
+      // Print all request fields before sending
       print('📤 Final request fields: ${request.fields}');
       print('📤 Final request files: ${request.files.map((f) => f.filename).toList()}');
 
@@ -490,37 +489,12 @@ class AuthProvider extends ChangeNotifier {
       print('📥 Response body: ${response.body}');
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
         print('✅ Profile updated successfully!');
-        print('📷 New profile photo URL: ${responseData['profile_photo']}');
-
-        // Validate the profile photo URL
-        if (responseData['profile_photo'] != null) {
-          try {
-            final imageResponse = await http.head(Uri.parse(responseData['profile_photo']));
-            print('📷 Image URL validation status: ${imageResponse.statusCode}');
-            if (imageResponse.statusCode == 200) {
-              _userProfile?['profile_photo'] = responseData['profile_photo'];
-              print('✅ Valid profile photo URL: ${responseData['profile_photo']}');
-            } else {
-              print('⚠️ Profile photo URL is invalid: ${responseData['profile_photo']}');
-              _userProfile?['profile_photo'] = ''; // Clear invalid URL
-            }
-          } catch (e) {
-            print('⚠️ Error validating profile photo URL: $e');
-            _userProfile?['profile_photo'] = ''; // Clear invalid URL
-          }
-        } else {
-          print('⚠️ No profile photo URL in response.');
-          _userProfile?['profile_photo'] = '';
-        }
-
-        await _saveUserProfileToStorage();
+        // Refresh profile data and notify listeners
         await refreshUserData();
-        notifyListeners();
         return true;
       } else {
-        print('❌ Update failed: ${response.body}');
+        print('❌ Update failed.');
         return false;
       }
     } catch (e) {
@@ -609,7 +583,7 @@ class AuthProvider extends ChangeNotifier {
   // Logout method to clear all user data
   Future<void> logout() async {
     debugPrint('[AuthProvider] Logging out user...');
-    
+
     // Clear in-memory data
     _accessToken = null;
     _refreshToken = null;
@@ -618,13 +592,13 @@ class AuthProvider extends ChangeNotifier {
     _userOtp = null;
     _errorMessage = null;
     _conversations.clear();
-    
+
     // Clear stored data
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('accessToken');
     await prefs.remove('refreshToken');
     await ProfileDataManager.clearProfileData();
-    
+
     debugPrint('[AuthProvider] User logged out successfully');
     notifyListeners();
   }

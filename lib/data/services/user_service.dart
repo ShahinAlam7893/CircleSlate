@@ -1,6 +1,6 @@
-// lib/data/services/auth_service.dart
 import 'dart:convert';
 import 'dart:io'; // Import for File
+import 'package:circleslate/core/network/endpoints.dart';
 import 'package:http/http.dart'; // Import for Response
 import 'package:circleslate/data/services/api_base_helper.dart'; // Your unchanged ApiBaseHelper
 import 'package:circleslate/core/errors/exceptions.dart'; // Ensure this path is correct
@@ -57,15 +57,14 @@ class AuthService {
       // If a profile image is provided, use postMultipart
       if (profileImage != null) {
         response = await _apiHelper.postMultipart(
-          '/auth/register/', // Adjust endpoint as needed
+          Urls.register,
           fields,
           file: profileImage,
           fileField: 'profile_photo',
         );
       } else {
-        // Otherwise, use a regular post request
         response = await _apiHelper.post(
-          '/auth/register/',
+          Urls.register,
           fields,
         );
       }
@@ -82,13 +81,13 @@ class AuthService {
   }) async {
     try {
       final response = await _apiHelper.post(
-        '/auth/login/', // Adjust endpoint as needed
+        Urls.login, // Adjust endpoint as needed
         {
           'email': email,
           'password': password,
         },
       );
-      final responseData = _handleResponse(response, '/auth/login/'); // Check for errors and decode
+      final responseData = _handleResponse(response, Urls.login); // Check for errors and decode
 
       // Save tokens using TokenManager
       final accessToken = responseData['tokens']?['access'];
@@ -111,15 +110,15 @@ class AuthService {
     final token = tokens?.accessToken;
 
     if (token == null || token.isEmpty) {
-      throw UnauthorizedException('No auth token found.', '/profile');
+      throw UnauthorizedException('No auth token found.', Urls.userProfile);
     }
 
     try {
       final response = await _apiHelper.get(
-        '/profile/', // Adjust endpoint as needed
+        Urls.userProfile, // Adjust endpoint as needed
         token: token, // Pass token explicitly to ApiBaseHelper
       );
-      return _handleResponse(response, '/profile/'); // Check for errors and decode
+      return _handleResponse(response, Urls.userProfile); // Check for errors and decode
     } catch (e) {
       rethrow;
     }
@@ -128,10 +127,10 @@ class AuthService {
   Future<Map<String, dynamic>> forgotPassword(String email) async {
     try {
       final response = await _apiHelper.post(
-        '/auth/forgot-password/', // Adjust endpoint as needed
+        Urls.forgotPassword, // Adjust endpoint as needed
         {'email': email},
       );
-      return _handleResponse(response, '/auth/forgot-password/'); // Check for errors and decode
+      return _handleResponse(response, Urls.forgotPassword); // Check for errors and decode
     } catch (e) {
       rethrow;
     }
@@ -140,13 +139,13 @@ class AuthService {
   Future<Map<String, dynamic>> verifyOtp(String email, String otp) async {
     try {
       final response = await _apiHelper.post(
-        '/auth/verify-otp/', // Adjust endpoint as needed
+        Urls.verifyOtp, // Adjust endpoint as needed
         {
           'email': email,
           'otp': otp,
         },
       );
-      return _handleResponse(response, '/auth/verify-otp/'); // Check for errors and decode
+      return _handleResponse(response, Urls.verifyOtp); // Check for errors and decode
     } catch (e) {
       rethrow;
     }
@@ -159,14 +158,14 @@ class AuthService {
   }) async {
     try {
       final response = await _apiHelper.post(
-        '/auth/set-new-password/', // Adjust endpoint as needed
+        Urls.setnewpassword,
         {
           'email': email,
           'password': newPassword,
           'confirm_password': confirmPassword,
         },
       );
-      return _handleResponse(response, '/auth/set-new-password/'); // Check for errors and decode
+      return _handleResponse(response, Urls.setnewpassword); // Check for errors and decode
     } catch (e) {
       rethrow;
     }

@@ -115,8 +115,6 @@ class _SmoothNavigationWrapperState extends State<SmoothNavigationWrapper>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
-  // Define your actual pages here.
-  // IMPORTANT: Ensure these pages do NOT have their own Scaffold's bottomNavigationBar.
   List<Widget> get _pages {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUserId = authProvider.currentUserId ?? '';
@@ -124,11 +122,11 @@ class _SmoothNavigationWrapperState extends State<SmoothNavigationWrapper>
     debugPrint('[SmoothNavigationWrapper] Current User ID: $currentUserId');
     
     return [
-      const HomePage(), // Your actual Home Page
-      const UpcomingEventsPage(), // Your actual Events Page
-      const ChatListPage(), // No longer needs currentUserId parameter
+      const HomePage(),
+      const UpcomingEventsPage(),
+      const ChatListPage(),
       const AvailabilityPage(),
-      const SettingsPage(),// Your actual Groups Page
+      const SettingsPage(),
       // const GroupManagementPage(),
     ];
   }
@@ -167,7 +165,6 @@ class _SmoothNavigationWrapperState extends State<SmoothNavigationWrapper>
       _currentIndex = index;
     });
 
-    // Add haptic feedback
     HapticFeedback.lightImpact();
   }
 
@@ -182,8 +179,6 @@ class _SmoothNavigationWrapperState extends State<SmoothNavigationWrapper>
         curve: Curves.easeInOutCubic,
       );
 
-      // Optional: update browser path without rebuild
-      // GoRouter.of(context).go('/home??tab=$index');
     }
   }
 
@@ -203,7 +198,6 @@ class _SmoothNavigationWrapperState extends State<SmoothNavigationWrapper>
               onPageChanged: _onPageChanged,
               physics: const BouncingScrollPhysics(), // Provides a nice scroll effect
               children: pages.map((page) =>
-              // AnimatedSwitcher for smooth page transitions within PageView
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: page,
@@ -372,3 +366,4 @@ class _ComingSoonPage extends StatelessWidget {
     );
   }
 }
+

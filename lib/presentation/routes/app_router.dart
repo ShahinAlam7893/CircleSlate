@@ -261,6 +261,7 @@ class AppRouter {
             currentUserId: currentUserId,
             chatPartnerId: chatPartnerId,
             conversationId: extraData?['conversationId'] ?? '',
+            chatPartnerImageUrl: extraData?['chatPartnerImageUrl'] ?? '',
             isadmin: extraData?['isCurrentUserAdminInGroup'] ?? false,
           );
         },

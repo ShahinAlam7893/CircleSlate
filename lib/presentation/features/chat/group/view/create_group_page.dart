@@ -111,7 +111,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
 
         if (mounted) {
           context.push(RoutePaths.groupConversationPage, extra: {
-            'groupName': newGroupChat.name,            // pass groupName here
+            'groupName': newGroupChat.name,
             'isGroupChat': true,
             'isCurrentUserAdminInGroup': true,
             'currentUserId': widget.currentUserId,
@@ -125,11 +125,11 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
         if (mounted) {
           setState(() {
             _isLoading = false;
-            _errorMessage = 'Failed to create group: $e';
+            // _errorMessage = 'Failed to create group: $e';
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to create group: $e')),
-          );
+          // ScaffoldMessenger.of(context).showSnackBar(
+          //   SnackBar(content: Text('Failed to create group: $e')),
+          // );
         }
       } finally {
         if (mounted) {

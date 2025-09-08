@@ -547,15 +547,38 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
               Stack(
                 children: [
                   CircleAvatar(
+                    backgroundColor: Colors.blueGrey[100],
                     radius: 28,
-                    backgroundImage: chat.imageUrl.startsWith('http')
+                    backgroundImage: chat.imageUrl.isNotEmpty
+                        ? (chat.imageUrl.startsWith('http')
                         ? NetworkImage(chat.imageUrl)
-                        : AssetImage(chat.imageUrl) as ImageProvider,
-                    onBackgroundImageError: (_, __) {
+                        : AssetImage(chat.imageUrl) as ImageProvider)
+                        : null,
+                    onBackgroundImageError: chat.imageUrl.isNotEmpty
+                        ? (_, __) {
                       debugPrint('[ChatListPage] Failed to load image: ${chat.imageUrl}');
-                    },
-                    child: chat.imageUrl.isEmpty ? const Icon(Icons.person) : null,
+                    }
+                        : null,
+                    child: chat.imageUrl.isEmpty
+                        ? (chat.isGroupChat
+                        ? const Icon(Icons.group, size: 28, color: Colors.grey)
+                        : const Icon(Icons.person, size: 28, color: Colors.grey))
+                        : null,
                   ),
+
+
+
+
+                  // CircleAvatar(
+                  //   radius: 28,
+                  //   backgroundImage: chat.imageUrl.startsWith('http')
+                  //       ? NetworkImage(chat.imageUrl)
+                  //       : AssetImage(chat.imageUrl) as ImageProvider,
+                  //   onBackgroundImageError: (_, __) {
+                  //     debugPrint('[ChatListPage] Failed to load image: ${chat.imageUrl}');
+                  //   },
+                  //   child: chat.imageUrl.isEmpty ? const Icon(Icons.person) : null,
+                  // ),
                 ],
               ),
               const SizedBox(width: 16.0),
@@ -636,33 +659,36 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                             ],
                           ),
                         if (chat.status == ChatMessageStatus.seen)
-                          Row(
-                            children: const [
-                              Icon(Icons.check, size: 12, color: AppColors.primaryBlue),
-                              Icon(Icons.check, size: 12, color: AppColors.primaryBlue),
-                            ],
+                          CircleAvatar(
+                            radius: 8,
+                            backgroundImage: chat.imageUrl.startsWith('http')
+                                ? NetworkImage(chat.imageUrl)
+                                : AssetImage(chat.imageUrl) as ImageProvider,
+                            onBackgroundImageError: (_, __) {
+                              debugPrint('[ChatListPage] Failed to load avatar for seen indicator');
+                            },
                           ),
                       ],
                     ),
-                    if (chat.unreadCount > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4.0),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryBlue,
-                            borderRadius: BorderRadius.circular(12.0),
-                          ),
-                          child: Text(
-                            '${chat.unreadCount}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10.0,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
+                    // if (chat.unreadCount > 0)
+                    //   Padding(
+                    //     padding: const EdgeInsets.only(top: 4.0),
+                    //     child: Container(
+                    //       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                    //       decoration: BoxDecoration(
+                    //         color: AppColors.primaryBlue,
+                    //         borderRadius: BorderRadius.circular(12.0),
+                    //       ),
+                    //       child: Text(
+                    //         '${chat.unreadCount}',
+                    //         style: const TextStyle(
+                    //           color: Colors.white,
+                    //           fontSize: 10.0,
+                    //           fontWeight: FontWeight.w600,
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ),
                   ],
                 ),
               ),

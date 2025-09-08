@@ -44,7 +44,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     );
 
     if (success) {
-      context.go('/pass_cng_succussful'); // Navigate to success page
+      context.go('/pass_cng_succussful');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

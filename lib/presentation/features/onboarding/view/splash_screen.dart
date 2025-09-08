@@ -1,13 +1,14 @@
 import 'dart:async';
 
+import 'package:circleslate/presentation/common_providers/auth_provider.dart';
 import 'package:circleslate/presentation/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_assets.dart';
-
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -32,7 +33,7 @@ class _SplashScreenState extends State<SplashScreen> {
         final prefs = await SharedPreferences.getInstance();
         final savedAccessToken = prefs.getString('accessToken');
         String? token = savedAccessToken;
-        
+
         print('SplashScreen: Token found: ${token != null ? "Yes" : "No"}');
         print('SplashScreen: Token value: $token');
 
@@ -43,7 +44,15 @@ class _SplashScreenState extends State<SplashScreen> {
         }
 
         if (token != null && token.isNotEmpty) {
-          print('SplashScreen: Navigating to home');
+          final authProvider = Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          );
+          await authProvider.userProfile; // makes sure currentUserId is set
+
+          print(
+            'SplashScreen: Navigating to home with userId=${authProvider.currentUserId}',
+          );
           context.goNamed(AppRoutes.home);
         } else {
           print('SplashScreen: Navigating to onboarding');

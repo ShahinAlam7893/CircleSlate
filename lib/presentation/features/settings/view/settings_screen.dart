@@ -10,10 +10,10 @@ class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   // Function to show the logout confirmation dialog
-  void _showLogoutConfirmationDialog(BuildContext context) {
+  void _showLogoutConfirmationDialog(BuildContext scaffoldContext) {
     showDialog(
-      context: context,
-      builder: (BuildContext context) {
+      context: scaffoldContext,
+      builder: (BuildContext dialogContext) {
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12.0),
@@ -25,14 +25,12 @@ class SettingsPage extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Warning Icon
                 Icon(
                   Icons.error_outline,
-                  color: AppColors.unavailableRed, // Red color for warning
+                  color: AppColors.unavailableRed,
                   size: 60.0,
                 ),
                 const SizedBox(height: 20.0),
-                // Title
                 const Text(
                   'Are you sure you want to Log Out?',
                   textAlign: TextAlign.center,
@@ -44,7 +42,6 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10.0),
-                // Subtitle
                 const Text(
                   'This action cannot be undone. Are you sure you want to continue?',
                   textAlign: TextAlign.center,
@@ -55,15 +52,12 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 30.0),
-                // Buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop(); // Dismiss dialog
-                        },
+                        onPressed: () => Navigator.of(dialogContext).pop(),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12.0),
                           side: const BorderSide(color: AppColors.primaryBlue, width: 1),
@@ -86,24 +80,24 @@ class SettingsPage extends StatelessWidget {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
-                          Navigator.of(context).pop(); // Dismiss dialog
-                          
-                          // Perform logout action
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          Navigator.of(dialogContext).pop();
+
+                          // Use the scaffold context to show SnackBar
+                          ScaffoldMessenger.of(scaffoldContext).showSnackBar(
                             const SnackBar(content: Text('Logging Out...')),
                           );
-                          
-                          // Get AuthProvider and logout
-                          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+                          // Perform logout
+                          final authProvider = Provider.of<AuthProvider>(scaffoldContext, listen: false);
                           await authProvider.logout();
-                          
-                          // Navigate to login page after logout
-                          if (context.mounted) {
-                            context.go(RoutePaths.login);
+
+                          // Navigate to login page
+                          if (scaffoldContext.mounted) {
+                            scaffoldContext.go(RoutePaths.login);
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.unavailableRed, // Red for Log Out button
+                          backgroundColor: AppColors.unavailableRed,
                           padding: const EdgeInsets.symmetric(vertical: 12.0),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8.0),
@@ -130,6 +124,7 @@ class SettingsPage extends StatelessWidget {
       },
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

@@ -27,6 +27,7 @@ import 'package:circleslate/presentation/features/authentication/view/signup_scr
 import 'package:circleslate/presentation/features/onboarding/view/splash_screen.dart';
 import 'package:circleslate/presentation/features/onboarding/view/onboarding_screen.dart';
 import '../../data/datasources/shared_pref/local/entity/token_entity.dart';
+import '../features/authentication/view/forgot_password_reset_page.dart';
 import '../features/chat/group/view/create_group_page.dart';
 import '../features/chat/group/view/group_conversation_page.dart';
 import '../features/event_management/view/google_calendar_page.dart';
@@ -44,6 +45,7 @@ class RoutePaths {
   static const String emailVerification = '/emailVerification';
   static const String OtpVerificationPage = '/otp_page';
   static const String resetPasswordPage = '/password_reset';
+  static const String ForgotPasswordResetPage = '/forgot_password_reset';
   static const String passwordResetSuccessPage = '/pass_cng_succussful';
   static const String upcomingeventspage = '/up_coming_events';
   static const String createeventspage = '/create_event';
@@ -81,7 +83,7 @@ class AppRoutes {
   static const String forgotpassword = 'forgotpassword';
   static const String emailVerification = 'emailVerification';
   static const String resetPasswordPage = 'resetPasswordPage';
-  static const String passwordResetSuccessPage = 'passwordResetSuccessPage';
+  static const String ForgotPasswordResetPage = 'passwordResetSuccessPage';
   static const String upcomingeventspage = 'upcomingeventspage';
   static const String createeventpage = 'createeventpage';
   static const String chatlistpage = 'chatlistpage';
@@ -141,7 +143,7 @@ class AppRouter {
       GoRoute(
         path: RoutePaths.forgotpassword,
         builder: (context, state) =>
-        const ForgotPasswordPage(isLoggedIn: false),
+            const ForgotPasswordPage(isLoggedIn: false),
       ),
       GoRoute(
         path: RoutePaths.emailVerification,
@@ -164,51 +166,55 @@ class AppRouter {
         },
       ),
       GoRoute(
+        path: RoutePaths.ForgotPasswordResetPage,
+        name: RoutePaths.ForgotPasswordResetPage,
+        builder: (context, state) => const ForgotPasswordResetPage(),
+      ),
+      GoRoute(
         path: RoutePaths.resetPasswordPage,
+        name: RoutePaths.resetPasswordPage,
         builder: (context, state) => const ResetPasswordPage(),
       ),
       GoRoute(
         path: RoutePaths.passwordResetSuccessPage,
+        name: RoutePaths.passwordResetSuccessPage,
         builder: (context, state) => const PasswordResetSuccessPage(),
       ),
       GoRoute(
         path: RoutePaths.home,
         name: AppRoutes.home,
         builder: (context, state) =>
-        const SmoothNavigationWrapper(initialIndex: 0),
+            const SmoothNavigationWrapper(initialIndex: 0),
       ),
       GoRoute(
         path: RoutePaths.upcomingeventspage,
         name: AppRoutes.upcomingeventspage,
         builder: (context, state) =>
-        const SmoothNavigationWrapper(initialIndex: 1),
+            const SmoothNavigationWrapper(initialIndex: 1),
       ),
-
 
       // GoRoute(
       //   path: RoutePaths.googlecalendarevent,
       //   name: AppRoutes.googlecalendarevent,
       //   builder: (context, state) => EventFormPage(),
       // ),
-
-
       GoRoute(
         path: RoutePaths.chatlistpage,
         name: AppRoutes.chatlistpage,
         builder: (context, state) =>
-        const SmoothNavigationWrapper(initialIndex: 2),
+            const SmoothNavigationWrapper(initialIndex: 2),
       ),
       GoRoute(
         path: RoutePaths.availability,
         name: AppRoutes.availability,
         builder: (context, state) =>
-        const SmoothNavigationWrapper(initialIndex: 3),
+            const SmoothNavigationWrapper(initialIndex: 3),
       ),
       GoRoute(
         path: RoutePaths.settings,
         name: AppRoutes.settings,
         builder: (context, state) =>
-        const SmoothNavigationWrapper(initialIndex: 4),
+            const SmoothNavigationWrapper(initialIndex: 4),
       ),
       GoRoute(
         path: RoutePaths.createeventspage,
@@ -241,12 +247,11 @@ class AppRouter {
       //     );
       //   },
       // ),
-
       GoRoute(
         path: RoutePaths.onetooneconversationpage,
         builder: (context, state) {
           final Map<String, dynamic>? extraData =
-          state.extra as Map<String, dynamic>?;
+              state.extra as Map<String, dynamic>?;
 
           final String chatPartnerName =
               extraData?['chatPartnerName'] ?? 'Unknown Chat Partner';
@@ -266,8 +271,6 @@ class AppRouter {
           );
         },
       ),
-
-
 
       // GoRoute(
       //   path: RoutePaths.onetooneconversationpage,
@@ -302,7 +305,6 @@ class AppRouter {
             currentUserId: extra['currentUserId'] ?? '',
             isCurrentUserAdmin: extra['isCurrentUserAdmin'] ?? false,
             conversationId: extra['conversationId'] ?? '',
-
           );
         },
       ),
@@ -335,7 +337,7 @@ class AppRouter {
       GoRoute(
         path: RoutePaths.addmemberpage,
         builder: (context, state) =>
-        const AddMemberPage(conversationId: '', currentUserId: ''),
+            const AddMemberPage(conversationId: '', currentUserId: ''),
       ),
       GoRoute(
         path: RoutePaths.directInvite,
@@ -371,14 +373,17 @@ class AppRouter {
       ),
       GoRoute(
         path: RoutePaths.notification,
-        builder: (context, state) => const NotificationPage(),
+        builder: (context, state) {
+          final userId = state.extra as String;
+          return NotificationPage(currentUserId: userId);
+        },
       ),
 
       GoRoute(
         path: RoutePaths.editProfile,
         builder: (context, state) {
           final Map<String, dynamic> extraData =
-          state.extra as Map<String, dynamic>;
+              state.extra as Map<String, dynamic>;
           return EditProfilePage(
             initialFullName: extraData['fullName'],
             initialEmail: extraData['email'],

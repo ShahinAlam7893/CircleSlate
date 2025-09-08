@@ -80,6 +80,7 @@ class AuthProvider extends ChangeNotifier {
       );
 
       _setLoading(false);
+      print("🔍 Register Response Status: ${response.body}");
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       return _setError('An unexpected error occurred: $e');
@@ -255,7 +256,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final token = _accessToken;
-      final url = Uri.parse('${Urls.baseUrl}${Urls.resetPassword}');
+      final url = Uri.parse('${Urls.resetPassword}');
 
       final response = await http.put(
         url,

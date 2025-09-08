@@ -66,6 +66,23 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
     }
   }
 
+
+  void showInfoDialog(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Handles the resend email logic
   Future<void> _handleResendEmail() async {
     if (_isResending) return;
@@ -83,9 +100,10 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
         );
         _startResendTimer(); // Restart the timer
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(authProvider.errorMessage ?? 'Failed to resend email.')),
-        );
+        showInfoDialog(context, "Error", "Failed to resend email.");
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(content: Text('Failed to resend email.')),
+        // );
       }
       setState(() {
         _isResending = false;
@@ -97,9 +115,10 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
   Future<void> _handleVerifyOtp() async {
     String otp = _otpControllers.map((c) => c.text).join();
     if (otp.length != 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a 4-digit OTP')),
-      );
+      showInfoDialog(context, "Error", "Please enter a 4-digit OTP");
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(content: Text('Please enter a 4-digit OTP')),
+      // );
       return;
     }
 
@@ -116,11 +135,12 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
         _isVerifying = false;
       });
       if (success) {
-        context.push('/forgot_password_reset');
+        context.pushNamed(RoutePaths.ForgotPasswordResetPage);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(authProvider.errorMessage ?? 'OTP verification failed.')),
-        );
+        showInfoDialog(context, "Failed", "OTP verification failed.");
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(content: Text('OTP verification failed.')),
+        // );
       }
     }
   }
@@ -323,4 +343,5 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       ),
     );
   }
+
 }

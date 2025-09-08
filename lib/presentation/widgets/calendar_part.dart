@@ -44,10 +44,10 @@ class _CalendarPartState extends State<CalendarPart> {
     }
 
     try {
-      await availabilityProvider.fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth);
-      if (!mounted) return;
-
-      await eventsProvider.fetchGoingEvents(context, userId: widget.userId);
+      await Future.wait([
+        availabilityProvider.fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth),
+        eventsProvider.fetchGoingEvents(context, userId: widget.userId),
+      ]);
     } catch (e) {
       if (!mounted) return;
       debugPrint('Error initializing calendar: $e');
@@ -69,10 +69,10 @@ class _CalendarPartState extends State<CalendarPart> {
     }
 
     try {
-      await availabilityProvider.fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth);
-      if (!mounted) return;
-
-      await eventsProvider.fetchGoingEvents(context, userId: widget.userId);
+      await Future.wait([
+        availabilityProvider.fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth),
+        eventsProvider.fetchGoingEvents(context, userId: widget.userId),
+      ]);
     } catch (e) {
       if (!mounted) return;
       debugPrint('Error fetching month data: $e');
@@ -227,11 +227,17 @@ class _CalendarPartState extends State<CalendarPart> {
       calendarDates.add(calendarDates.last.add(const Duration(days: 1)));
     }
 
+    // ✅ Precompute formatted dates (avoids heavy intl calls in itemBuilder)
+    final formattedDates = calendarDates
+        .map((d) => DateFormat('yyyy-MM-dd').format(d))
+        .toList();
+
+    // ✅ Cache screen width calculations (instead of recalculating per cell)
     final screenWidth = MediaQuery.of(context).size.width;
-    final double weekdayFontSize = screenWidth * 0.035;
-    final double dateNumberFontSize = screenWidth * 0.04;
-    final double cellSpacing = screenWidth * 0.01;
-    final double borderRadius = screenWidth * 0.02;
+    final weekdayFontSize = screenWidth * 0.035;
+    final dateNumberFontSize = screenWidth * 0.04;
+    final cellSpacing = screenWidth * 0.01;
+    final borderRadius = screenWidth * 0.02;
 
     final List<String> weekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
@@ -281,8 +287,8 @@ class _CalendarPartState extends State<CalendarPart> {
           itemCount: calendarDates.length,
           itemBuilder: (context, index) {
             final date = calendarDates[index];
+            final formattedDate = formattedDates[index];
             final bool isCurrentMonth = date.month == _currentMonth && date.year == _currentYear;
-            final formattedDate = DateFormat('yyyy-MM-dd').format(date);
 
             final state = isCurrentMonth
                 ? availabilityProvider.calendarDateStates[date.day] ?? 2
@@ -368,6 +374,52 @@ class _CalendarPartState extends State<CalendarPart> {
             );
           },
         ),
+        SizedBox(height: screenWidth * 0.03),
+
+// ✅ Legend Section
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Available Indicator
+            Row(
+              children: [
+                Container(
+                  width: screenWidth * 0.04,
+                  height: screenWidth * 0.04,
+                  decoration: BoxDecoration(
+                    color: AppColors.availableGreen,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                SizedBox(width: screenWidth * 0.015),
+                const Text(
+                  "Available",
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+            SizedBox(width: screenWidth * 0.08),
+
+            // Unavailable Indicator
+            Row(
+              children: [
+                Container(
+                  width: screenWidth * 0.04,
+                  height: screenWidth * 0.04,
+                  decoration: BoxDecoration(
+                    color: AppColors.unavailableRed,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                SizedBox(width: screenWidth * 0.015),
+                const Text(
+                  "Unavailable",
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ],
+        )
       ],
     );
   }

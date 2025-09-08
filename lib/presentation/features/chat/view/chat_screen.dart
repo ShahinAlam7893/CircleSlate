@@ -29,14 +29,17 @@ class OneToOneConversationPage extends StatefulWidget {
     required this.chatPartnerId,
     this.conversationId,
     this.chatPartnerImageUrl,
-    required bool isadmin, required,
+    required bool isadmin,
+    required,
   });
 
   @override
-  State<OneToOneConversationPage> createState() => _OneToOneConversationPageState();
+  State<OneToOneConversationPage> createState() =>
+      _OneToOneConversationPageState();
 }
 
-class _OneToOneConversationPageState extends State<OneToOneConversationPage> with WidgetsBindingObserver {
+class _OneToOneConversationPageState extends State<OneToOneConversationPage>
+    with WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
   final List<StoredMessage> _messages = [];
   final ChatSocketService _chatSocketService = ChatSocketService();
@@ -58,11 +61,13 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
     WidgetsBinding.instance.addObserver(this);
 
     _chatPartnerImageUrl = widget.chatPartnerImageUrl;
-    setState(() {
-
-    });
-    debugPrint('[OneToOneConversationPage] initState: currentUser=${widget.currentUserId} partner=${widget.chatPartnerId} conversationId=${widget.conversationId}');
-    debugPrint('[OneToOneConversationPage] Chat partner image URL: $_chatPartnerImageUrl');
+    setState(() {});
+    debugPrint(
+      '[OneToOneConversationPage] initState: currentUser=${widget.currentUserId} partner=${widget.chatPartnerId} conversationId=${widget.conversationId}',
+    );
+    debugPrint(
+      '[OneToOneConversationPage] Chat partner image URL: $_chatPartnerImageUrl',
+    );
     if (_chatPartnerImageUrl == null || _chatPartnerImageUrl!.isEmpty) {
       _loadChatPartnerImage();
     }
@@ -71,7 +76,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
     _messageController.addListener(() {
       if (mounted) setState(() {});
     });
-
   }
 
   Future<void> _loadChatPartnerImage() async {
@@ -79,11 +83,15 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       String? imageUrl = widget.chatPartnerImageUrl;
 
       if (imageUrl == null || imageUrl.isEmpty) {
-        debugPrint('[OneToOneConversationPage] No chat partner image URL provided, fetching from API');
+        debugPrint(
+          '[OneToOneConversationPage] No chat partner image URL provided, fetching from API',
+        );
         imageUrl = await UserImageHelper.getUserImageUrl(widget.chatPartnerId);
       }
       if (imageUrl == null || imageUrl.isEmpty) {
-        debugPrint('[OneToOneConversationPage] No image URL available, using default');
+        debugPrint(
+          '[OneToOneConversationPage] No image URL available, using default',
+        );
         imageUrl = 'assets/images/default_user.png';
       } else if (!imageUrl.startsWith('http')) {
         imageUrl = 'http://72.60.26.57$imageUrl';
@@ -91,10 +99,13 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       setState(() {
         _chatPartnerImageUrl = imageUrl;
       });
-      debugPrint('[OneToOneConversationPage] Chat partner image loaded: $imageUrl');
-
+      debugPrint(
+        '[OneToOneConversationPage] Chat partner image loaded: $imageUrl',
+      );
     } catch (e) {
-      debugPrint('[OneToOneConversationPage] Error loading chat partner image: $e');
+      debugPrint(
+        '[OneToOneConversationPage] Error loading chat partner image: $e',
+      );
       setState(() {
         _chatPartnerImageUrl = 'assets/images/default_user.png';
       });
@@ -104,12 +115,20 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      debugPrint('[OneToOneConversationPage] App resumed - reconnecting socket & marking read');
+      debugPrint(
+        '[OneToOneConversationPage] App resumed - reconnecting socket & marking read',
+      );
       _chatSocketService.reconnect();
       _markMessagesAsRead();
     } else if (state == AppLifecycleState.paused) {
-      debugPrint('[OneToOneConversationPage] App paused - sending typing=false');
-      _chatSocketService.sendTypingIndicator(widget.chatPartnerId, false, isGroup: false);
+      debugPrint(
+        '[OneToOneConversationPage] App paused - sending typing=false',
+      );
+      _chatSocketService.sendTypingIndicator(
+        widget.chatPartnerId,
+        false,
+        isGroup: false,
+      );
     }
   }
 
@@ -121,14 +140,19 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
     try {
       if (widget.conversationId != null && widget.conversationId!.isNotEmpty) {
         _conversationId = widget.conversationId;
-        debugPrint('[OneToOneConversationPage] Using passed conversationId: $_conversationId');
-      } else {
-        final conversationData = await ConversationManager.getOrCreateConversation(
-          widget.currentUserId,
-          widget.chatPartnerId,
-          partnerName: widget.chatPartnerName,
+        debugPrint(
+          '[OneToOneConversationPage] Using passed conversationId: $_conversationId',
         );
-        debugPrint('[OneToOneConversationPage] Conversation data: $conversationData');
+      } else {
+        final conversationData =
+            await ConversationManager.getOrCreateConversation(
+              widget.currentUserId,
+              widget.chatPartnerId,
+              partnerName: widget.chatPartnerName,
+            );
+        debugPrint(
+          '[OneToOneConversationPage] Conversation data: $conversationData',
+        );
         _conversationId = conversationData['conversation']['id'].toString();
       }
 
@@ -147,9 +171,13 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       setState(() {
         _isLoading = false;
       });
-      debugPrint('[OneToOneConversationPage] Initialization complete for conversation $_conversationId');
+      debugPrint(
+        '[OneToOneConversationPage] Initialization complete for conversation $_conversationId',
+      );
     } catch (e, st) {
-      debugPrint('[OneToOneConversationPage] Error initializing conversation: $e\n$st');
+      debugPrint(
+        '[OneToOneConversationPage] Error initializing conversation: $e\n$st',
+      );
       setState(() {
         _isLoading = false;
         _isConversationReady = false;
@@ -163,8 +191,12 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
   Future<void> _loadMessagesFromLocal() async {
     if (_conversationId == null) return;
     try {
-      debugPrint('[OneToOneConversationPage] Loading messages from local for $_conversationId');
-      final messages = await MessageStorageService.loadMessages(_conversationId!);
+      debugPrint(
+        '[OneToOneConversationPage] Loading messages from local for $_conversationId',
+      );
+      final messages = await MessageStorageService.loadMessages(
+        _conversationId!,
+      );
       setState(() {
         _messages.clear();
         _messages.addAll(messages);
@@ -174,15 +206,21 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       });
       _scrollToBottom();
     } catch (e) {
-      debugPrint('[OneToOneConversationPage] Error loading messages from local storage: $e');
+      debugPrint(
+        '[OneToOneConversationPage] Error loading messages from local storage: $e',
+      );
       await MessageStorageService.clearMessages(_conversationId!);
     }
   }
 
   Future<void> _sendPendingMessages() async {
     if (_conversationId == null) return;
-    final pendingMessages = await MessageStorageService.getPendingMessages(_conversationId!);
-    debugPrint('[OneToOneConversationPage] Found ${pendingMessages.length} pending messages to send');
+    final pendingMessages = await MessageStorageService.getPendingMessages(
+      _conversationId!,
+    );
+    debugPrint(
+      '[OneToOneConversationPage] Found ${pendingMessages.length} pending messages to send',
+    );
     for (var message in pendingMessages) {
       try {
         _chatSocketService.sendMessage(
@@ -196,9 +234,13 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
           MessageStatus.sent,
           clientMessageId: message.clientMessageId,
         );
-        debugPrint('[OneToOneConversationPage] Pending message sent (client:${message.clientMessageId})');
+        debugPrint(
+          '[OneToOneConversationPage] Pending message sent (client:${message.clientMessageId})',
+        );
       } catch (e) {
-        debugPrint('[OneToOneConversationPage] Error sending pending message: $e');
+        debugPrint(
+          '[OneToOneConversationPage] Error sending pending message: $e',
+        );
         await MessageStorageService.updateMessageStatus(
           _conversationId!,
           message.id,
@@ -213,43 +255,67 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
   Future<void> _connectWebSocket() async {
     if (_conversationId == null) return;
     try {
-      debugPrint('[OneToOneConversationPage] Connecting WebSocket for conversation $_conversationId');
+      debugPrint(
+        '[OneToOneConversationPage] Connecting WebSocket for conversation $_conversationId',
+      );
       await _chatSocketService.connect(_conversationId!);
 
-      _chatSocketService.connectionStatus.listen((isConnected) {
-        debugPrint('[OneToOneConversationPage] WebSocket connection status: $isConnected');
-        setState(() {});
-      }, onError: (e) {
-        debugPrint('[OneToOneConversationPage] connectionStatus stream error: $e');
-      });
+      _chatSocketService.connectionStatus.listen(
+        (isConnected) {
+          debugPrint(
+            '[OneToOneConversationPage] WebSocket connection status: $isConnected',
+          );
+          setState(() {});
+        },
+        onError: (e) {
+          debugPrint(
+            '[OneToOneConversationPage] connectionStatus stream error: $e',
+          );
+        },
+      );
 
-      _chatSocketService.messages.listen((data) {
-        debugPrint('[OneToOneConversationPage] Received socket message: $data');
-        try {
-          final decoded = jsonDecode(data);
-          debugPrint('[OneToOneConversationPage] Decoded message: $decoded');
-          if (decoded['type'] == 'new_message') {
-            debugPrint('[OneToOneConversationPage] Processing new_message');
-            _addMessageFromServer(decoded['message'] ?? decoded);
-          } else if (decoded['type'] == 'conversation_messages' && decoded['messages'] != null) {
-            final messages = decoded['messages'] as List;
-            debugPrint('[OneToOneConversationPage] Loading ${messages.length} conversation messages');
-            _loadConversationMessages(messages);
-          } else if (decoded['type'] == 'typing_indicator') {
-            setState(() {
-              _isPartnerTyping = decoded['is_typing'] == true;
-            });
-          } else if (decoded['type'] == 'mark_as_read') {
-            _updateMessageStatuses(List<String>.from(decoded['message_ids'] ?? []), MessageStatus.seen);
-          } else {
-            debugPrint('[OneToOneConversationPage] Unhandled socket message type: ${decoded['type']}');
+      _chatSocketService.messages.listen(
+        (data) {
+          debugPrint(
+            '[OneToOneConversationPage] Received socket message: $data',
+          );
+          try {
+            final decoded = jsonDecode(data);
+            debugPrint('[OneToOneConversationPage] Decoded message: $decoded');
+            if (decoded['type'] == 'new_message') {
+              debugPrint('[OneToOneConversationPage] Processing new_message');
+              _addMessageFromServer(decoded['message'] ?? decoded);
+            } else if (decoded['type'] == 'conversation_messages' &&
+                decoded['messages'] != null) {
+              final messages = decoded['messages'] as List;
+              debugPrint(
+                '[OneToOneConversationPage] Loading ${messages.length} conversation messages',
+              );
+              _loadConversationMessages(messages);
+            } else if (decoded['type'] == 'typing_indicator') {
+              setState(() {
+                _isPartnerTyping = decoded['is_typing'] == true;
+              });
+            } else if (decoded['type'] == 'mark_as_read') {
+              _updateMessageStatuses(
+                List<String>.from(decoded['message_ids'] ?? []),
+                MessageStatus.seen,
+              );
+            } else {
+              debugPrint(
+                '[OneToOneConversationPage] Unhandled socket message type: ${decoded['type']}',
+              );
+            }
+          } catch (e) {
+            debugPrint(
+              '[OneToOneConversationPage] Error decoding socket message: $e',
+            );
           }
-        } catch (e) {
-          debugPrint('[OneToOneConversationPage] Error decoding socket message: $e');
-        }
-      }, onError: (err) {
-        debugPrint('[OneToOneConversationPage] Messages stream error: $err');
-      });
+        },
+        onError: (err) {
+          debugPrint('[OneToOneConversationPage] Messages stream error: $err');
+        },
+      );
 
       _markMessagesAsRead();
       _requestConversationMessages();
@@ -277,11 +343,15 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
           setState(() {
             _isLoadingMessages = false;
           });
-          debugPrint('[OneToOneConversationPage] Conversation messages request timed out');
+          debugPrint(
+            '[OneToOneConversationPage] Conversation messages request timed out',
+          );
         }
       });
     } catch (e) {
-      debugPrint('[OneToOneConversationPage] Error requesting conversation messages: $e');
+      debugPrint(
+        '[OneToOneConversationPage] Error requesting conversation messages: $e',
+      );
       setState(() {
         _isLoadingMessages = false;
       });
@@ -289,7 +359,9 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
   }
 
   void _loadConversationMessages(List<dynamic> messagesData) async {
-    debugPrint('[OneToOneConversationPage] Processing ${messagesData.length} conversation messages');
+    debugPrint(
+      '[OneToOneConversationPage] Processing ${messagesData.length} conversation messages',
+    );
 
     try {
       final List<StoredMessage> newMessages = [];
@@ -305,24 +377,32 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
           if (msgData['sender'] is Map) {
             senderId = msgData['sender']['id']?.toString() ?? '';
           } else {
-            senderId = msgData['sender_id']?.toString() ?? msgData['sender']?.toString() ?? '';
+            senderId =
+                msgData['sender_id']?.toString() ??
+                msgData['sender']?.toString() ??
+                '';
           }
           debugPrint('[OneToOneConversationPage] Parsed senderId: $senderId');
 
           if (senderId.isEmpty || senderId == 'currentUserId') {
-            debugPrint('[OneToOneConversationPage] Invalid senderId, skipping message: $msgData');
+            debugPrint(
+              '[OneToOneConversationPage] Invalid senderId, skipping message: $msgData',
+            );
             continue;
           }
 
           final bool isRead = msgData['is_read'] == true;
           final bool isDelivered = msgData['is_delivered'] == true;
-          final String? clientMessageId = msgData['client_message_id']?.toString();
+          final String? clientMessageId = msgData['client_message_id']
+              ?.toString();
 
           DateTime messageTime;
           try {
             messageTime = DateTime.parse(timestamp);
           } catch (e) {
-            debugPrint('[OneToOneConversationPage] Error parsing timestamp: $timestamp, using current time');
+            debugPrint(
+              '[OneToOneConversationPage] Error parsing timestamp: $timestamp, using current time',
+            );
             messageTime = DateTime.now();
           }
 
@@ -330,8 +410,10 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
           if (senderId == widget.currentUserId) {
             senderImageUrl = UserImageHelper.getCurrentUserImageUrl(context);
           } else {
-            if (msgData['sender'] is Map && msgData['sender']['profile_photo_url'] != null) {
-              String imageUrl = msgData['sender']['profile_photo_url'].toString();
+            if (msgData['sender'] is Map &&
+                msgData['sender']['profile_photo_url'] != null) {
+              String imageUrl = msgData['sender']['profile_photo_url']
+                  .toString();
               if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
                 imageUrl = 'http://72.60.26.57$imageUrl';
               }
@@ -345,10 +427,16 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
             id: messageId,
             text: content,
             timestamp: messageTime,
-            sender: senderId == widget.currentUserId ? MessageSender.user : MessageSender.other,
+            sender: senderId == widget.currentUserId
+                ? MessageSender.user
+                : MessageSender.other,
             senderId: senderId,
             senderImageUrl: senderImageUrl,
-            status: isRead ? MessageStatus.seen : isDelivered ? MessageStatus.delivered : MessageStatus.sent,
+            status: isRead
+                ? MessageStatus.seen
+                : isDelivered
+                ? MessageStatus.delivered
+                : MessageStatus.sent,
             clientMessageId: clientMessageId,
           );
 
@@ -371,22 +459,32 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       });
 
       _scrollToBottom();
-      debugPrint('[OneToOneConversationPage] Loaded ${newMessages.length} conversation messages');
+      debugPrint(
+        '[OneToOneConversationPage] Loaded ${newMessages.length} conversation messages',
+      );
     } catch (e) {
-      debugPrint('[OneToOneConversationPage] Error loading conversation messages: $e');
+      debugPrint(
+        '[OneToOneConversationPage] Error loading conversation messages: $e',
+      );
     }
   }
 
   void _addMessageFromServer(Map<String, dynamic> msgData) async {
-    debugPrint('[OneToOneConversationPage] _addMessageFromServer payload: $msgData');
+    debugPrint(
+      '[OneToOneConversationPage] _addMessageFromServer payload: $msgData',
+    );
 
     try {
-      final String messageId = msgData['id']?.toString() ?? msgData['message_id']?.toString() ?? '';
-      final String content = msgData['content']?.toString() ?? msgData['text']?.toString() ?? '';
+      final String messageId =
+          msgData['id']?.toString() ?? msgData['message_id']?.toString() ?? '';
+      final String content =
+          msgData['content']?.toString() ?? msgData['text']?.toString() ?? '';
       final String timestamp = msgData['timestamp']?.toString() ?? '';
 
       if (messageId.isEmpty || content.isEmpty) {
-        debugPrint('[OneToOneConversationPage] Invalid message data: missing id or content');
+        debugPrint(
+          '[OneToOneConversationPage] Invalid message data: missing id or content',
+        );
         return;
       }
 
@@ -394,23 +492,31 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       String? senderImageUrl;
       if (msgData['sender'] is Map) {
         senderId = msgData['sender']['id']?.toString() ?? '';
-        senderImageUrl = msgData['sender']['profile_photo']?.toString() ??
+        senderImageUrl =
+            msgData['sender']['profile_photo']?.toString() ??
             msgData['sender']['profile_photo_url']?.toString();
         if (senderImageUrl != null && !senderImageUrl!.startsWith('http')) {
           senderImageUrl = 'http://72.60.26.57$senderImageUrl';
         }
       } else {
-        senderId = msgData['sender_id']?.toString() ?? msgData['sender']?.toString() ?? '';
+        senderId =
+            msgData['sender_id']?.toString() ??
+            msgData['sender']?.toString() ??
+            '';
       }
       debugPrint('[OneToOneConversationPage] Parsed senderId: $senderId');
 
       if (senderId.isEmpty || senderId == 'currentUserId') {
-        debugPrint('[OneToOneConversationPage] Invalid senderId, skipping message');
+        debugPrint(
+          '[OneToOneConversationPage] Invalid senderId, skipping message',
+        );
         return;
       }
 
       if (senderId == widget.currentUserId) {
-        debugPrint('[OneToOneConversationPage] Skipping own message: $messageId');
+        debugPrint(
+          '[OneToOneConversationPage] Skipping own message: $messageId',
+        );
         return;
       }
 
@@ -418,18 +524,26 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       try {
         messageTime = DateTime.parse(timestamp);
       } catch (e) {
-        debugPrint('[OneToOneConversationPage] Error parsing timestamp: $timestamp, using current time');
+        debugPrint(
+          '[OneToOneConversationPage] Error parsing timestamp: $timestamp, using current time',
+        );
         messageTime = DateTime.now();
       }
 
       final bool isRead = msgData['is_read'] == true;
       final bool isDelivered = msgData['is_delivered'] == true;
       final String? clientMessageId = msgData['client_message_id']?.toString();
-      final status = isRead ? MessageStatus.seen : isDelivered ? MessageStatus.delivered : MessageStatus.sent;
+      final status = isRead
+          ? MessageStatus.seen
+          : isDelivered
+          ? MessageStatus.delivered
+          : MessageStatus.sent;
 
       if (senderImageUrl == null || senderImageUrl.isEmpty) {
         senderImageUrl = await UserImageHelper.getUserImageUrl(senderId);
-        debugPrint('[OneToOneConversationPage] Fetched image for user $senderId: $senderImageUrl');
+        debugPrint(
+          '[OneToOneConversationPage] Fetched image for user $senderId: $senderImageUrl',
+        );
       }
 
       final message = StoredMessage(
@@ -443,10 +557,15 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
         clientMessageId: clientMessageId,
       );
 
-      final existingMessage = _messages.any((m) =>
-      m.id == messageId || (m.clientMessageId != null && m.clientMessageId == clientMessageId));
+      final existingMessage = _messages.any(
+        (m) =>
+            m.id == messageId ||
+            (m.clientMessageId != null && m.clientMessageId == clientMessageId),
+      );
       if (existingMessage) {
-        debugPrint('[OneToOneConversationPage] Message already exists, skipping: $messageId (client: $clientMessageId)');
+        debugPrint(
+          '[OneToOneConversationPage] Message already exists, skipping: $messageId (client: $clientMessageId)',
+        );
         return;
       }
 
@@ -466,17 +585,30 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
 
         _scrollToBottom();
         _markMessagesAsRead();
-        debugPrint('[OneToOneConversationPage] Message added to UI: ${message.text} (id: $messageId)');
+        debugPrint(
+          '[OneToOneConversationPage] Message added to UI: ${message.text} (id: $messageId)',
+        );
       }
     } catch (e) {
-      debugPrint('[OneToOneConversationPage] Error processing message from server: $e');
+      debugPrint(
+        '[OneToOneConversationPage] Error processing message from server: $e',
+      );
     }
   }
 
-  void _updateMessageStatuses(List<String> messageIds, MessageStatus status) async {
-    debugPrint('[OneToOneConversationPage] Updating ${messageIds.length} message statuses => $status');
+  void _updateMessageStatuses(
+    List<String> messageIds,
+    MessageStatus status,
+  ) async {
+    debugPrint(
+      '[OneToOneConversationPage] Updating ${messageIds.length} message statuses => $status',
+    );
     for (var messageId in messageIds) {
-      await MessageStorageService.updateMessageStatus(_conversationId!, messageId, status);
+      await MessageStorageService.updateMessageStatus(
+        _conversationId!,
+        messageId,
+        status,
+      );
     }
     await _loadMessagesFromLocal();
   }
@@ -484,13 +616,18 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
   void _markMessagesAsRead() async {
     if (_conversationId == null) return;
     final unreadMessages = _messages
-        .where((msg) =>
-    msg.sender == MessageSender.other &&
-        (msg.status == MessageStatus.sent || msg.status == MessageStatus.delivered))
+        .where(
+          (msg) =>
+              msg.sender == MessageSender.other &&
+              (msg.status == MessageStatus.sent ||
+                  msg.status == MessageStatus.delivered),
+        )
         .map((msg) => msg.id)
         .toList();
     if (unreadMessages.isNotEmpty) {
-      debugPrint('[OneToOneConversationPage] Marking ${unreadMessages.length} messages as read');
+      debugPrint(
+        '[OneToOneConversationPage] Marking ${unreadMessages.length} messages as read',
+      );
       _chatSocketService.markAsRead(unreadMessages);
       _updateMessageStatuses(unreadMessages, MessageStatus.seen);
     }
@@ -501,12 +638,17 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
     if (isTypingNow != _isTyping) {
       _isTyping = isTypingNow;
       debugPrint('[OneToOneConversationPage] Typing changed: $_isTyping');
-      _chatSocketService.sendTypingIndicator(widget.chatPartnerId, _isTyping, isGroup: false);
+      _chatSocketService.sendTypingIndicator(
+        widget.chatPartnerId,
+        _isTyping,
+        isGroup: false,
+      );
     }
   }
 
   void _sendMessage() async {
-    if (_messageController.text.trim().isEmpty || _conversationId == null) return;
+    if (_messageController.text.trim().isEmpty || _conversationId == null)
+      return;
 
     final clientMessageId = _uuid.v4();
     final message = StoredMessage(
@@ -520,7 +662,9 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       clientMessageId: clientMessageId,
     );
 
-    debugPrint('[OneToOneConversationPage] Sending message locally (client:$clientMessageId): ${message.text}');
+    debugPrint(
+      '[OneToOneConversationPage] Sending message locally (client:$clientMessageId): ${message.text}',
+    );
     setState(() {
       _messages.add(message);
       _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -541,7 +685,9 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('accessToken');
       if (token != null) {
-        final url = Uri.parse('http://72.60.26.57/api/chat/messages/$_conversationId/send/');
+        final url = Uri.parse(
+          'http://72.60.26.57/api/chat/messages/$_conversationId/send/',
+        );
         final response = await http.post(
           url,
           headers: {
@@ -554,7 +700,9 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
             'client_message_id': clientMessageId,
           }),
         );
-        debugPrint('[OneToOneConversationPage] HTTP API response: ${response.statusCode}');
+        debugPrint(
+          '[OneToOneConversationPage] HTTP API response: ${response.statusCode}',
+        );
       }
 
       await MessageStorageService.updateMessageStatus(
@@ -563,7 +711,9 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
         MessageStatus.sent,
         clientMessageId: clientMessageId,
       );
-      debugPrint('[OneToOneConversationPage] Message sent via socket (client:$clientMessageId)');
+      debugPrint(
+        '[OneToOneConversationPage] Message sent via socket (client:$clientMessageId)',
+      );
     } catch (e) {
       debugPrint('[OneToOneConversationPage] Error sending message: $e');
       await MessageStorageService.updateMessageStatus(
@@ -607,8 +757,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
         ),
         title: Row(
           children: [
-
-
             UserImageHelper.buildUserAvatarWithErrorHandling(
               imageUrl: _chatPartnerImageUrl,
               radius: 18,
@@ -622,7 +770,11 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
                 children: [
                   Text(
                     widget.chatPartnerName,
-                    style: const TextStyle(color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   if (_isPartnerTyping)
                     const Text(
@@ -650,38 +802,45 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
                 ? const Center(child: CircularProgressIndicator())
                 : _isLoadingMessages
                 ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text(
-                    'Loading conversation...',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
-                  ),
-                ],
-              ),
-            )
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text(
+                          'Loading conversation...',
+                          style: TextStyle(color: Colors.grey, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  )
                 : _messages.isEmpty
                 ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text(
-                    'No messages yet. Start the conversation!',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
-                  ),
-                ],
-              ),
-            )
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No messages yet. Start the conversation!',
+                          style: TextStyle(color: Colors.grey, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  )
                 : ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) => _buildMessageBubble(_messages[index], widget.currentUserId),
-            ),
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) => _buildMessageBubble(
+                      _messages[index],
+                      widget.currentUserId,
+                    ),
+                  ),
           ),
           _buildMessageInput(),
         ],
@@ -690,15 +849,20 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
   }
 
   Widget _buildMessageBubble(StoredMessage message, String currentUserId) {
-    final bool isUser = message.senderId == currentUserId;
-    debugPrint('[OneToOneConversationPage] isUser: $isUser, senderId: ${message.senderId}, currentUserId: $currentUserId');
+    final bool isUser = message.senderId == widget.currentUserId;
+    print(
+      "isUser: $isUser, abcdefcg ${widget.chatPartnerId} senderId: ${message.senderId}",
+    );
+    print("fshkjsdgh ${widget.currentUserId}");
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4.0),
         child: Column(
-          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isUser
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -714,14 +878,22 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
                 const SizedBox(width: 8.0),
                 Flexible(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 10.0,
+                    ),
                     decoration: BoxDecoration(
-                      color: isUser ? AppColors.receiverBubbleColor : AppColors.senderBubbleColor,
+                      color: isUser
+                          ? AppColors.receiverBubbleColor
+                          : AppColors.senderBubbleColor,
                       borderRadius: BorderRadius.circular(12.0),
                     ),
                     child: Text(
                       message.text,
-                      style: const TextStyle(fontSize: 14.0, fontFamily: 'Poppins'),
+                      style: const TextStyle(
+                        fontSize: 14.0,
+                        fontFamily: 'Poppins',
+                      ),
                     ),
                   ),
                 ),
@@ -770,7 +942,8 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
   }
 
   Widget _buildMessageInput() {
-    final bool canSend = _isConversationReady && _messageController.text.trim().isNotEmpty;
+    final bool canSend =
+        _isConversationReady && _messageController.text.trim().isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -793,9 +966,13 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
               maxLines: null,
               textCapitalization: TextCapitalization.sentences,
               decoration: InputDecoration(
-                hintText: _isConversationReady ? 'Type a message...' : 'Connecting...',
+                hintText: _isConversationReady
+                    ? 'Type a message...'
+                    : 'Connecting...',
                 hintStyle: TextStyle(
-                  color: _isConversationReady ? Colors.grey[600] : Colors.grey[400],
+                  color: _isConversationReady
+                      ? Colors.grey[600]
+                      : Colors.grey[400],
                 ),
                 filled: true,
                 fillColor: AppColors.chatInputFillColor,
@@ -803,7 +980,10 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage> wit
                   borderRadius: BorderRadius.circular(25.0),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 12.0,
+                ),
               ),
               onSubmitted: (_) => canSend ? _sendMessage() : null,
             ),

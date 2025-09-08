@@ -172,7 +172,7 @@ class _AuthInputFieldState extends State<AuthInputField> {
                 ? IconButton(
               icon: Icon(
                 _obscureText ? Icons.visibility : Icons.visibility_off,
-                color: AppColors.textColorSecondary,
+                color: Colors.black,
                 size: screenWidth * 0.05, // Responsive icon size
               ),
               onPressed: () {
@@ -221,6 +221,30 @@ class _CreateEventPageState extends State<CreateEventPage> {
 
   int _selectedIndex = 0; // For the bottom navigation bar
 
+
+  void _showInvalidDateDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.blueGrey.shade50,
+          title: const Text(
+            "Invalid Event Date",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
   @override
   void dispose() {
     _eventTitleController.dispose();
@@ -233,6 +257,31 @@ class _CreateEventPageState extends State<CreateEventPage> {
   }
 
   Future<void> createEvent() async {
+    // ✅ Check if date is empty
+    if (_dateController.text.isEmpty) {
+      _showInvalidDateDialog("Please select a date for the event.");
+      return;
+    }
+
+    // ✅ Parse event date
+    DateTime eventDate;
+    try {
+      eventDate = DateFormat('yyyy-MM-dd').parse(_dateController.text);
+    } catch (e) {
+      _showInvalidDateDialog("Invalid date format.");
+      return;
+    }
+
+    // ✅ Compare with today's date (ignore time)
+    DateTime today = DateTime.now();
+    DateTime todayOnlyDate = DateTime(today.year, today.month, today.day);
+
+    if (eventDate.isBefore(todayOnlyDate)) {
+      _showInvalidDateDialog("Event date cannot be in the past.");
+      return;
+    }
+
+    // ✅ Continue if date is valid
     final url = Uri.parse(Urls.Create_events);
 
     final invitesJson = InviteStorage().invitesJson;
@@ -240,7 +289,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
         ? List<int>.from(
       jsonDecode(invitesJson).map(
             (item) => int.parse(item.toString()),
-      ), // Ensure each item is an int
+      ),
     )
         : [];
 
@@ -249,25 +298,24 @@ class _CreateEventPageState extends State<CreateEventPage> {
     // Collect form data
     final Map<String, dynamic> eventData = {
       "title": _eventTitleController.text,
-      "date": _dateController.text, // Ensure this is in 'yyyy-MM-dd' format
+      "date": _dateController.text, // Must be 'yyyy-MM-dd'
       "start_time": _timeController.text,
-      "end_time":
-      _endtimeController.text, // Ensure this is in 'HH:mm:ss' format
+      "end_time": _endtimeController.text, // Must be 'HH:mm:ss'
       "location": _locationController.text,
       "description": _descriptionController.text,
-
       "event_type": _isOpenInvite ? "open" : "direct",
       "add_to_google_calendar": _addToGoogleCalendar,
       "ride_needed_for_event": _rideNeeded,
-      "invitees": invitees, // You can dynamically populate this if needed
+      "invitees": invitees,
     };
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('accessToken');
     print('[Create Event] Retrieved token: $token');
 
     final headers = {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token', // Replace with the actual token
+      'Authorization': 'Bearer $token',
     };
 
     print('Preparing to send data to API:');
@@ -287,7 +335,6 @@ class _CreateEventPageState extends State<CreateEventPage> {
 
       if (response.statusCode == 201) {
         print('Event created successfully!');
-        // Optionally parse the response body if needed
         final responseData = json.decode(response.body);
         print('Event ID: ${responseData['id']}');
       } else {
@@ -298,6 +345,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
       print('Error creating event: $e');
     }
   }
+
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(

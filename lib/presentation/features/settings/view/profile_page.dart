@@ -89,7 +89,7 @@ class _AuthInputFieldState extends State<AuthInputField> {
             ? IconButton(
                 icon: Icon(
                   _obscureText ? Icons.visibility : Icons.visibility_off,
-                  color: AppColors.textColorSecondary,
+                  color: Colors.black,
                 ),
                 onPressed: () {
                   setState(() {

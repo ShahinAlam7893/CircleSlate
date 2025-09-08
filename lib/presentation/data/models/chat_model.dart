@@ -25,7 +25,7 @@ class Chat {
     required this.imageUrl,
     this.unreadCount = 0,
     this.isOnline = false,
-    this.status = ChatMessageStatus.seen,
+    this.status = ChatMessageStatus.sent,
     this.isGroupChat = false,
     this.isCurrentUserAdminInGroup,
     this.participants = const [],
@@ -48,11 +48,13 @@ class Chat {
     // Decide image source
     String imageUrl;
     if (json['is_group'] == true) {
-      imageUrl = json['display_photo'] ?? 'assets/images/default_group.png';
+      imageUrl = json['display_photo'] ?? "";
+      // imageUrl = json['display_photo'] ?? "assets/images/default_group.png";
     } else {
       imageUrl = otherParticipant != null && otherParticipant['profile_photo_url'] != null
           ? otherParticipant['profile_photo_url']
-          : 'assets/images/default_user.png';
+          : "";
+      // : 'assets/images/default_user.png';
     }
 
     print("📌 Chosen imageUrl: $imageUrl");
@@ -64,8 +66,22 @@ class Chat {
       time: lastMsg != null ? lastMsg['timestamp'] ?? '' : '',
       imageUrl: imageUrl,
       unreadCount: json['unread_count'] ?? 0,
-      isOnline: otherParticipant != null ? otherParticipant['is_online'] ?? false : false,
-      status: ChatMessageStatus.seen,
+      isOnline: otherParticipant != null ? otherParticipant['is_online'] ?? false : false,status: () {
+      final msg = json['last_message'];
+      final statusStr = msg != null ? msg['status'] as String? : null;
+
+      switch (statusStr) {
+        case 'sent':
+          return ChatMessageStatus.sent;
+        case 'delivered':
+          return ChatMessageStatus.delivered;
+        case 'seen':
+          return ChatMessageStatus.seen;
+        default:
+          return ChatMessageStatus.sent;
+      }
+    }(),
+
       isGroupChat: json['is_group'] ?? false,
       isCurrentUserAdminInGroup: json['user_role'] == 'admin',
       participants: participants,

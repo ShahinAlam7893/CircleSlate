@@ -106,7 +106,7 @@ class _AuthInputFieldState extends State<AuthInputField> {
                 ? IconButton(
               icon: Icon(
                 _obscureText ? Icons.visibility : Icons.visibility_off,
-                color: AppColors.textColorSecondary,
+                color: Colors.black,
                 size: screenWidth * 0.05,
               ),
               onPressed: () {
@@ -379,7 +379,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                   ),
                                 ),
                                 Text(
-                                  'JPG, PNG up to 5MB',
+                                  'JPG, PNG up to 10MB',
                                   style: TextStyle(
                                     fontSize: 10.0,
                                     color: AppColors.textLight,

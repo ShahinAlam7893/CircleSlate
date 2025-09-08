@@ -72,7 +72,7 @@ class _AuthInputFieldState extends State<AuthInputField> {
         contentPadding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
         suffixIcon: widget.isPassword
             ? IconButton(
-          icon: Icon(_obscureText ? Icons.visibility : Icons.visibility_off, color: AppColors.textColorSecondary),
+          icon: Icon(_obscureText ? Icons.visibility : Icons.visibility_off, color: Colors.black),
           onPressed: () {
             if (!mounted) return;
             setState(() => _obscureText = !_obscureText);

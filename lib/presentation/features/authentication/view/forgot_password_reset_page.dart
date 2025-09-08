@@ -42,7 +42,7 @@ class _ForgotPasswordResetPageState extends State<ForgotPasswordResetPage> {
       context.go('/pass_cng_succussful');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authProvider.errorMessage ?? 'Password reset failed.')),
+        SnackBar(content: Text('Password reset failed.')),
       );
     }
   }

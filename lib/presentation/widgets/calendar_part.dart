@@ -20,129 +20,34 @@ class CalendarPart extends StatefulWidget {
 class _CalendarPartState extends State<CalendarPart> {
   int _currentMonth = DateTime.now().month;
   int _currentYear = DateTime.now().year;
+  bool _isDialogShown = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeCalendar();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
+      final eventsProvider = Provider.of<UserEventsProvider>(context, listen: false);
+      availabilityProvider.resetCalendarData();
+
+      if (widget.userId != null) {
+        availabilityProvider.setSelectedUserId(widget.userId!);
+        eventsProvider.setSelectedUserId(widget.userId!);
+        print('CalendarPart: Set selectedUserId to ${widget.userId}');
+      } else {
+        availabilityProvider.setSelectedUserId('');
+        eventsProvider.setSelectedUserId('');
+        print('CalendarPart: Viewing current user\'s calendar');
+      }
+
+      await availabilityProvider.fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth);
+      await eventsProvider.fetchGoingEvents(context, userId: widget.userId);
     });
   }
 
-  Future<void> _initializeCalendar() async {
-    final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
-    final eventsProvider = Provider.of<UserEventsProvider>(context, listen: false);
-
-    availabilityProvider.resetCalendarData();
-
-    if (widget.userId != null) {
-      availabilityProvider.setSelectedUserId(widget.userId!);
-      eventsProvider.setSelectedUserId(widget.userId!);
-    } else {
-      availabilityProvider.setSelectedUserId('');
-      eventsProvider.setSelectedUserId('');
-    }
-
-    try {
-      await Future.wait([
-        availabilityProvider.fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth),
-        eventsProvider.fetchGoingEvents(context, userId: widget.userId),
-      ]);
-    } catch (e) {
-      if (!mounted) return;
-      debugPrint('Error initializing calendar: $e');
-    }
-  }
-
-  Future<void> _fetchMonthData() async {
-    final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
-    final eventsProvider = Provider.of<UserEventsProvider>(context, listen: false);
-
-    availabilityProvider.resetCalendarData();
-
-    if (widget.userId != null) {
-      availabilityProvider.setSelectedUserId(widget.userId!);
-      eventsProvider.setSelectedUserId(widget.userId!);
-    } else {
-      availabilityProvider.setSelectedUserId('');
-      eventsProvider.setSelectedUserId('');
-    }
-
-    try {
-      await Future.wait([
-        availabilityProvider.fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth),
-        eventsProvider.fetchGoingEvents(context, userId: widget.userId),
-      ]);
-    } catch (e) {
-      if (!mounted) return;
-      debugPrint('Error fetching month data: $e');
-    }
-  }
-
-  Future<void> _showDayDetails(DateTime date) async {
-    final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
-
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text("Loading day details..."),
-            ],
-          ),
-        );
-      },
-    );
-
-    try {
-      await availabilityProvider.fetchDayDetails(date);
-      if (!mounted) return;
-
-      Navigator.of(context).pop();
-
-      if (availabilityProvider.dayDetailsError != null) {
-        if (!mounted) return;
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text("Error"),
-              content: Text(availabilityProvider.dayDetailsError!),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text("OK"),
-                ),
-              ],
-            );
-          },
-        );
-      } else if (availabilityProvider.selectedDayDetails != null) {
-        if (!mounted) return;
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return DayDetailsDialog(
-              dayDetails: availabilityProvider.selectedDayDetails!,
-              userName: widget.userName,
-              isCurrentUser: widget.userId == null,
-            );
-          },
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      debugPrint('Error showing day details: $e');
-    }
-  }
-
-  void _goToNextMonth() async {
+  void _goToNextMonth() {
     setState(() {
       if (_currentMonth == 12) {
         _currentMonth = 1;
@@ -151,10 +56,10 @@ class _CalendarPartState extends State<CalendarPart> {
         _currentMonth++;
       }
     });
-    await _fetchMonthData();
+    _fetchMonthData();
   }
 
-  void _goToPreviousMonth() async {
+  void _goToPreviousMonth() {
     setState(() {
       if (_currentMonth == 1) {
         _currentMonth = 12;
@@ -163,12 +68,35 @@ class _CalendarPartState extends State<CalendarPart> {
         _currentMonth--;
       }
     });
-    await _fetchMonthData();
+    _fetchMonthData();
+  }
+
+  void _fetchMonthData() {
+    if (!mounted) return;
+
+    final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
+    final eventsProvider = Provider.of<UserEventsProvider>(context, listen: false);
+
+    availabilityProvider.resetCalendarData();
+
+    if (widget.userId != null) {
+      availabilityProvider.setSelectedUserId(widget.userId!);
+      eventsProvider.setSelectedUserId(widget.userId!);
+    } else {
+      availabilityProvider.setSelectedUserId('');
+      eventsProvider.setSelectedUserId('');
+    }
+
+    availabilityProvider.fetchMonthAvailabilityFromAPI(_currentYear, _currentMonth);
+    eventsProvider.fetchGoingEvents(context, userId: widget.userId);
   }
 
   void _onDateTap(DateTime date) async {
+    if (!mounted || _isDialogShown) return; // Prevent multiple dialog openings
+
     final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
 
+    // If not read-only and current month, allow editing
     if (!widget.isReadOnly &&
         date.month == _currentMonth &&
         date.year == _currentYear) {
@@ -176,7 +104,37 @@ class _CalendarPartState extends State<CalendarPart> {
       return;
     }
 
+    // For read-only or viewing details, show day details dialog
     await _showDayDetails(date);
+  }
+
+  Future<void> _showDayDetails(DateTime date) async {
+    if (!mounted || _isDialogShown) return;
+
+    _isDialogShown = true;
+    final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
+
+    try {
+      // Single dialog approach with better state management
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          return _DayDetailsDialogWrapper(
+            date: date,
+            availabilityProvider: availabilityProvider,
+            userName: widget.userName,
+            isCurrentUser: widget.userId == null,
+          );
+        },
+      );
+    } catch (e) {
+      print('Error showing day details dialog: $e');
+    } finally {
+      if (mounted) {
+        _isDialogShown = false;
+      }
+    }
   }
 
   @override
@@ -188,14 +146,33 @@ class _CalendarPartState extends State<CalendarPart> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (availabilityProvider.errorMessage != null || userEventsProvider.errorMessage != null) {
-      final errorMessage = availabilityProvider.errorMessage ?? userEventsProvider.errorMessage;
+    if (availabilityProvider.errorMessage != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Error: $errorMessage',
+              'Error: ${availabilityProvider.errorMessage}',
+              style: const TextStyle(color: Colors.red, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchMonthData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (userEventsProvider.errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Error: ${userEventsProvider.errorMessage}',
               style: const TextStyle(color: Colors.red, fontSize: 16),
               textAlign: TextAlign.center,
             ),
@@ -215,29 +192,26 @@ class _CalendarPartState extends State<CalendarPart> {
 
     List<DateTime> calendarDates = [];
 
+    // Previous month dates
     for (int i = 0; i < startDayOffset; i++) {
       calendarDates.add(firstDayOfMonth.subtract(Duration(days: startDayOffset - i)));
     }
 
+    // Current month dates
     for (int i = 1; i <= daysInMonth; i++) {
       calendarDates.add(DateTime(_currentYear, _currentMonth, i));
     }
 
+    // Fill remaining to make full weeks
     while (calendarDates.length % 7 != 0) {
       calendarDates.add(calendarDates.last.add(const Duration(days: 1)));
     }
 
-    // ✅ Precompute formatted dates (avoids heavy intl calls in itemBuilder)
-    final formattedDates = calendarDates
-        .map((d) => DateFormat('yyyy-MM-dd').format(d))
-        .toList();
-
-    // ✅ Cache screen width calculations (instead of recalculating per cell)
     final screenWidth = MediaQuery.of(context).size.width;
-    final weekdayFontSize = screenWidth * 0.035;
-    final dateNumberFontSize = screenWidth * 0.04;
-    final cellSpacing = screenWidth * 0.01;
-    final borderRadius = screenWidth * 0.02;
+    final double weekdayFontSize = screenWidth * 0.035;
+    final double dateNumberFontSize = screenWidth * 0.04;
+    final double cellSpacing = screenWidth * 0.01;
+    final double borderRadius = screenWidth * 0.02;
 
     final List<String> weekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
@@ -253,6 +227,8 @@ class _CalendarPartState extends State<CalendarPart> {
           ],
         ),
         SizedBox(height: screenWidth * 0.02),
+
+        // Weekday labels
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -275,6 +251,8 @@ class _CalendarPartState extends State<CalendarPart> {
           ),
         ),
         SizedBox(height: screenWidth * 0.02),
+
+        // Calendar grid
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -287,8 +265,8 @@ class _CalendarPartState extends State<CalendarPart> {
           itemCount: calendarDates.length,
           itemBuilder: (context, index) {
             final date = calendarDates[index];
-            final formattedDate = formattedDates[index];
             final bool isCurrentMonth = date.month == _currentMonth && date.year == _currentYear;
+            final formattedDate = DateFormat('yyyy-MM-dd').format(date);
 
             final state = isCurrentMonth
                 ? availabilityProvider.calendarDateStates[date.day] ?? 2
@@ -374,54 +352,100 @@ class _CalendarPartState extends State<CalendarPart> {
             );
           },
         ),
-        SizedBox(height: screenWidth * 0.03),
-
-// ✅ Legend Section
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Available Indicator
-            Row(
-              children: [
-                Container(
-                  width: screenWidth * 0.04,
-                  height: screenWidth * 0.04,
-                  decoration: BoxDecoration(
-                    color: AppColors.availableGreen,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                SizedBox(width: screenWidth * 0.015),
-                const Text(
-                  "Available",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-            SizedBox(width: screenWidth * 0.08),
-
-            // Unavailable Indicator
-            Row(
-              children: [
-                Container(
-                  width: screenWidth * 0.04,
-                  height: screenWidth * 0.04,
-                  decoration: BoxDecoration(
-                    color: AppColors.unavailableRed,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                SizedBox(width: screenWidth * 0.015),
-                const Text(
-                  "Unavailable",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-          ],
-        )
       ],
     );
+  }
+}
+
+// Separate wrapper widget for better state management
+class _DayDetailsDialogWrapper extends StatefulWidget {
+  final DateTime date;
+  final dynamic availabilityProvider;
+  final String? userName;
+  final bool isCurrentUser;
+
+  const _DayDetailsDialogWrapper({
+    required this.date,
+    required this.availabilityProvider,
+    this.userName,
+    required this.isCurrentUser,
+  });
+
+  @override
+  State<_DayDetailsDialogWrapper> createState() => _DayDetailsDialogWrapperState();
+}
+
+class _DayDetailsDialogWrapperState extends State<_DayDetailsDialogWrapper> {
+  late Future<void> _fetchFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchFuture = widget.availabilityProvider.fetchDayDetails(widget.date);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+      future: _fetchFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          // Loading state
+          return const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text("Loading day details..."),
+              ],
+            ),
+          );
+        } else {
+          // Check for errors after the future completes
+          if (widget.availabilityProvider.dayDetailsError != null) {
+            // Error state
+            return AlertDialog(
+              title: const Text("Error"),
+              content: Text(widget.availabilityProvider.dayDetailsError!),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    if (Navigator.canPop(context)) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text("OK"),
+                ),
+              ],
+            );
+          } else if (widget.availabilityProvider.selectedDayDetails != null) {
+            // Success state - show day details
+            return DayDetailsDialog(
+              dayDetails: widget.availabilityProvider.selectedDayDetails!,
+              userName: widget.userName,
+              isCurrentUser: widget.isCurrentUser,
+            );
+          } else {
+            // Fallback state
+            return AlertDialog(
+              title: const Text("No Details"),
+              content: const Text("No details available for this day."),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    if (Navigator.canPop(context)) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text("OK"),
+                ),
+              ],
+            );
+          }
+        }
+      },
+    );
+
   }
 }
 

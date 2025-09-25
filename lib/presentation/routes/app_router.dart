@@ -351,10 +351,10 @@ class AppRouter {
         path: RoutePaths.privacyPolicy,
         builder: (context, state) => const PrivacyPolicyPage(),
       ),
-      GoRoute(
-        path: RoutePaths.privacyControls,
-        builder: (context, state) => const PrivacyControlsPage(),
-      ),
+      // GoRoute(
+      //   path: RoutePaths.privacyControls,
+      //   builder: (context, state) => const PrivacyControlsPage(),
+      // ),
       GoRoute(
         path: RoutePaths.termsAndConditions,
         builder: (context, state) => const TermsAndConditionsPage(),

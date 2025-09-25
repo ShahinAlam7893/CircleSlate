@@ -379,7 +379,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                   ),
                                 ),
                                 Text(
-                                  'JPG, PNG up to 10MB',
+                                  'JPG, PNG up to 1MB',
                                   style: TextStyle(
                                     fontSize: 10.0,
                                     color: AppColors.textLight,

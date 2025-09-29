@@ -257,13 +257,10 @@ class _CreateEventPageState extends State<CreateEventPage> {
   }
 
   Future<void> createEvent() async {
-    // ✅ Check if date is empty
     if (_dateController.text.isEmpty) {
       _showInvalidDateDialog("Please select a date for the event.");
       return;
     }
-
-    // ✅ Parse event date
     DateTime eventDate;
     try {
       eventDate = DateFormat('yyyy-MM-dd').parse(_dateController.text);
@@ -271,8 +268,6 @@ class _CreateEventPageState extends State<CreateEventPage> {
       _showInvalidDateDialog("Invalid date format.");
       return;
     }
-
-    // ✅ Compare with today's date (ignore time)
     DateTime today = DateTime.now();
     DateTime todayOnlyDate = DateTime(today.year, today.month, today.day);
 
@@ -281,7 +276,6 @@ class _CreateEventPageState extends State<CreateEventPage> {
       return;
     }
 
-    // ✅ Continue if date is valid
     final url = Uri.parse(Urls.Create_events);
 
     final invitesJson = InviteStorage().invitesJson;

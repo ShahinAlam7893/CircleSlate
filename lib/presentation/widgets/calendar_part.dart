@@ -25,6 +25,8 @@ class _CalendarPartState extends State<CalendarPart> {
   @override
   void initState() {
     super.initState();
+    _currentMonth = DateTime.now().month;
+    _currentYear = DateTime.now().year;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
 
@@ -96,11 +98,16 @@ class _CalendarPartState extends State<CalendarPart> {
 
     final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
 
-    // If not read-only and current month, allow editing
     if (!widget.isReadOnly &&
         date.month == _currentMonth &&
         date.year == _currentYear) {
       availabilityProvider.toggleDateState(date.day);
+      await availabilityProvider.updateSingleDateAvailability(
+        _currentYear,
+        _currentMonth,
+        date.day,
+        availabilityProvider.calendarDateStates[date.day]!,
+      );
       return;
     }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:circleslate/core/constants/app_assets.dart';
 import 'package:circleslate/core/constants/app_colors.dart';
@@ -6,9 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/services/user_search_service.dart';
-import '../../../../data/models/user_search_result_model.dart';
-import '../../../routes/route_observer.dart';
+import 'package:circleslate/core/services/user_search_service.dart';
+import 'package:circleslate/data/models/user_search_result_model.dart';
+import 'package:circleslate/presentation/routes/route_observer.dart';
+import 'package:circleslate/presentation/common_providers/internet_provider.dart';
+import 'package:circleslate/presentation/common_providers/server_status_provider.dart';
 import '../conversation_service.dart';
 import '../../../data/models/chat_model.dart';
 import '../../../common_providers/auth_provider.dart';
@@ -28,6 +31,8 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
   bool _isSearching = false;
   String? _searchError;
   bool _isLoadingProfile = false;
+  Timer? _debounceTimer;
+  String? _lastSearchQuery; // Track last query to prevent redundant searches
 
   // Get current user ID from AuthProvider
   String? get currentUserId {
@@ -75,28 +80,35 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
 
   void _sortChatsByUnreadAndRecent() {
     _userList.sort((a, b) {
-      if (b.unreadCount != a.unreadCount) {
-        return b.unreadCount.compareTo(a.unreadCount);
-      }
       final dateA = _parseChatTime(a.time);
       final dateB = _parseChatTime(b.time);
-      return dateB.compareTo(dateA);
+      // Prioritize most recent message timestamp
+      int timeComparison = dateB.compareTo(dateA);
+      if (timeComparison != 0) {
+        return timeComparison;
+      }
+      // Use unreadCount as secondary criterion
+      return b.unreadCount.compareTo(a.unreadCount);
     });
   }
 
   void _refreshChats() {
-    ChatService.fetchChats().then((chatList) {
-      setState(() {
-        _userList = chatList;
-        _sortChatsByUnreadAndRecent();
-      });
-      debugPrint('[ChatListPage] Refreshed chats: ${_userList.length} chats loaded');
-    }).catchError((e) {
-      debugPrint('[ChatListPage] Error refreshing chat list: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to refresh chats: $e')),
-      );
-    });
+    ChatService.fetchChats()
+        .then((chatList) {
+          setState(() {
+            _userList = chatList;
+            _sortChatsByUnreadAndRecent();
+          });
+          debugPrint(
+            '[ChatListPage] Refreshed chats: ${_userList.length} chats loaded',
+          );
+        })
+        .catchError((e) {
+          debugPrint('[ChatListPage] Error refreshing chat list: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to refresh chats: $e')),
+          );
+        });
   }
 
   @override
@@ -110,6 +122,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
     routeObserver.unsubscribe(this);
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _debounceTimer?.cancel();
     _userSearchService.dispose();
     super.dispose();
   }
@@ -135,11 +148,20 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
 
   void _onSearchChanged() {
     final query = _searchController.text.trim();
+    if (query == _lastSearchQuery) {
+      debugPrint('[ChatListPage] Query unchanged: "$query", skipping');
+      return;
+    }
+
+    // Cancel any existing timer
+    _debounceTimer?.cancel();
+
     if (query.isEmpty) {
       setState(() {
         _userSearchResults.clear();
         _isSearching = false;
         _searchError = null;
+        _lastSearchQuery = null;
       });
       return;
     }
@@ -149,12 +171,66 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
       _searchError = null;
     });
 
-    _performSearch(query);
+    // Start a new timer for 2 seconds
+    _debounceTimer = Timer(const Duration(seconds: 2), () {
+      _performSearch(query);
+    });
   }
 
   void _performSearch(String query) async {
+    if (_lastSearchQuery == query) {
+      debugPrint('[ChatListPage] Duplicate query: "$query", skipping search');
+      setState(() {
+        _isSearching = false;
+      });
+      return;
+    }
+
+    // Skip if query is too short (backend requires 2+ characters)
+    if (query.length < 2) {
+      setState(() {
+        _userSearchResults.clear();
+        _isSearching = false;
+        _searchError = 'Search query must be at least 2 characters';
+        _lastSearchQuery = query;
+      });
+      debugPrint('[ChatListPage] Query too short (< 2 chars), skipping search');
+      return;
+    }
+
     try {
       debugPrint('[ChatListPage] Performing search for: "$query"');
+      final internetProvider = Provider.of<InternetProvider>(
+        context,
+        listen: false,
+      );
+      final serverProvider = Provider.of<ServerStatusProvider>(
+        context,
+        listen: false,
+      );
+
+      if (!internetProvider.isConnected) {
+        debugPrint('[ChatListPage] No internet connection, skipping search');
+        setState(() {
+          _userSearchResults.clear();
+          _isSearching = false;
+          _searchError = 'No internet connection';
+          _lastSearchQuery = query;
+        });
+        return;
+      }
+
+      if (serverProvider.isServerUp) {
+        debugPrint('[ChatListPage] Server is down, skipping search');
+        setState(() {
+          _userSearchResults.clear();
+          _isSearching = false;
+          _searchError = 'Server is down';
+          _lastSearchQuery = query;
+        });
+        return;
+      }
+
       final results = await _userSearchService.searchUsers(query);
       debugPrint('[ChatListPage] Search returned ${results.length} results');
 
@@ -163,6 +239,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
           _userSearchResults = results;
           _isSearching = false;
           _searchError = null;
+          _lastSearchQuery = query;
         });
         debugPrint('[ChatListPage] Search results updated in UI');
       }
@@ -173,6 +250,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
           _userSearchResults.clear();
           _isSearching = false;
           _searchError = 'Search failed: ${e.toString()}';
+          _lastSearchQuery = query;
         });
       }
     }
@@ -208,10 +286,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
               SizedBox(height: 16),
               Text(
                 'Loading user profile...',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
             ],
           ),
@@ -241,21 +316,29 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
               try {
                 if (currentUserId == null || currentUserId!.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('User ID is missing. Please log in again.')),
+                    const SnackBar(
+                      content: Text('User ID is missing. Please log in again.'),
+                    ),
                   );
                   return;
                 }
 
-                debugPrint('[ChatListPage] Navigating to CreateGroupPage with currentUserId: $currentUserId');
+                debugPrint(
+                  '[ChatListPage] Navigating to CreateGroupPage with currentUserId: $currentUserId',
+                );
                 await context.push(
                   RoutePaths.creategrouppage,
                   extra: {'currentUserId': currentUserId},
                 );
                 _refreshChats();
               } catch (e) {
-                debugPrint('[ChatListPage] Error navigating to CreateGroupPage: $e');
+                debugPrint(
+                  '[ChatListPage] Error navigating to CreateGroupPage: $e',
+                );
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error navigating to Create Group: $e')),
+                  SnackBar(
+                    content: Text('Error navigating to Create Group: $e'),
+                  ),
                 );
               }
             },
@@ -283,14 +366,17 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                   color: AppColors.textColorSecondary,
                   fontFamily: 'Poppins',
                 ),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textColorPrimary),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: AppColors.textColorPrimary,
+                ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                  },
-                )
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                        },
+                      )
                     : null,
                 filled: true,
                 fillColor: Colors.white,
@@ -425,12 +511,16 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
             await _ensureUserProfileLoaded();
             if (currentUserId == null || currentUserId!.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('User ID is missing. Please log in again.')),
+                const SnackBar(
+                  content: Text('User ID is missing. Please log in again.'),
+                ),
               );
               return;
             }
 
-            debugPrint('[ChatListPage] Starting chat with user: ${user.fullName}, imageUrl: ${user.profilePhotoUrl}');
+            debugPrint(
+              '[ChatListPage] Starting chat with user: ${user.fullName}, imageUrl: ${user.profilePhotoUrl}',
+            );
             final conversationId = await ChatService.getOrCreateConversation(
               currentUserId!,
               user.id,
@@ -445,7 +535,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                 'chatPartnerName': user.fullName,
                 'chatPartnerId': user.id,
                 'currentUserId': currentUserId,
-                'chatPartnerImageUrl': user.profilePhotoUrl, // Pass profile photo
+                'chatPartnerImageUrl': user.profilePhotoUrl,
                 'isGroupChat': false,
                 'isCurrentUserAdminInGroup': false,
                 'conversationId': conversationId,
@@ -454,7 +544,9 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
           } catch (e) {
             debugPrint('[ChatListPage] Error starting chat: $e');
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Failed to start chat. Please try again.')),
+              const SnackBar(
+                content: Text('Failed to start chat. Please try again.'),
+              ),
             );
           }
         },
@@ -494,7 +586,7 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
       onTap: () {
         if (!chat.isGroupChat && chat.participants.isNotEmpty) {
           final partner = chat.participants.firstWhere(
-                (p) => p['id'].toString() != currentUserId,
+            (p) => p['id'].toString() != currentUserId,
             orElse: () => null,
           );
 
@@ -505,8 +597,9 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
             return;
           }
 
-          debugPrint('[ChatListPage] Navigating to OneToOneConversationPage with imageUrl: ${chat.imageUrl}');
-          print( "=====++++" + chat.imageUrl.toString());
+          debugPrint(
+            '[ChatListPage] Navigating to OneToOneConversationPage with imageUrl: ${chat.imageUrl}',
+          );
           context.push(
             RoutePaths.onetooneconversationpage,
             extra: {
@@ -520,24 +613,28 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
             },
           );
         } else {
-          debugPrint('[ChatListPage] Navigating to GroupConversationPage with imageUrl: ${chat.imageUrl}');
-
+          debugPrint(
+            '[ChatListPage] Navigating to GroupConversationPage with imageUrl: ${chat.imageUrl}',
+          );
           context.push(
             RoutePaths.groupConversationPage,
             extra: {
               'groupName': chat.name,
               'isGroupChat': true,
-              'isCurrentUserAdminInGroup': chat.isCurrentUserAdminInGroup ?? false,
+              'isCurrentUserAdminInGroup':
+                  chat.isCurrentUserAdminInGroup ?? false,
               'currentUserId': currentUserId,
               'conversationId': chat.conversationId,
-              'groupImageUrl': chat.imageUrl, // Pass group image if needed
+              'groupImageUrl': chat.imageUrl,
             },
           );
         }
       },
       child: Card(
         margin: const EdgeInsets.symmetric(vertical: 8.0),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
         elevation: 0,
         color: Colors.white,
         child: Padding(
@@ -551,34 +648,30 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                     radius: 28,
                     backgroundImage: chat.imageUrl.isNotEmpty
                         ? (chat.imageUrl.startsWith('http')
-                        ? NetworkImage(chat.imageUrl)
-                        : AssetImage(chat.imageUrl) as ImageProvider)
+                              ? NetworkImage(chat.imageUrl)
+                              : AssetImage(chat.imageUrl) as ImageProvider)
                         : null,
                     onBackgroundImageError: chat.imageUrl.isNotEmpty
                         ? (_, __) {
-                      debugPrint('[ChatListPage] Failed to load image: ${chat.imageUrl}');
-                    }
+                            debugPrint(
+                              '[ChatListPage] Failed to load image: ${chat.imageUrl}',
+                            );
+                          }
                         : null,
                     child: chat.imageUrl.isEmpty
                         ? (chat.isGroupChat
-                        ? const Icon(Icons.group, size: 28, color: Colors.grey)
-                        : const Icon(Icons.person, size: 28, color: Colors.grey))
+                              ? const Icon(
+                                  Icons.group,
+                                  size: 28,
+                                  color: Colors.grey,
+                                )
+                              : const Icon(
+                                  Icons.person,
+                                  size: 28,
+                                  color: Colors.grey,
+                                ))
                         : null,
                   ),
-
-
-
-
-                  // CircleAvatar(
-                  //   radius: 28,
-                  //   backgroundImage: chat.imageUrl.startsWith('http')
-                  //       ? NetworkImage(chat.imageUrl)
-                  //       : AssetImage(chat.imageUrl) as ImageProvider,
-                  //   onBackgroundImageError: (_, __) {
-                  //     debugPrint('[ChatListPage] Failed to load image: ${chat.imageUrl}');
-                  //   },
-                  //   child: chat.imageUrl.isEmpty ? const Icon(Icons.person) : null,
-                  // ),
                 ],
               ),
               const SizedBox(width: 16.0),
@@ -621,7 +714,9 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                         color: chat.unreadCount > 0
                             ? AppColors.textColorPrimary
                             : AppColors.textColorSecondary,
-                        fontWeight: chat.unreadCount > 0 ? FontWeight.w500 : FontWeight.w400,
+                        fontWeight: chat.unreadCount > 0
+                            ? FontWeight.w500
+                            : FontWeight.w400,
                         fontFamily: 'Poppins',
                       ),
                       maxLines: 1,
@@ -642,7 +737,10 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                         Flexible(
                           child: Text(
                             chat.time,
-                            style: const TextStyle(fontSize: 12.0, fontFamily: 'Poppins'),
+                            style: const TextStyle(
+                              fontSize: 12.0,
+                              fontFamily: 'Poppins',
+                            ),
                             softWrap: false,
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
@@ -650,12 +748,24 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                         ),
                         const SizedBox(width: 4.0),
                         if (chat.status == ChatMessageStatus.sent)
-                          Icon(Icons.check, size: 14, color: AppColors.textColorSecondary),
+                          Icon(
+                            Icons.check,
+                            size: 14,
+                            color: AppColors.textColorSecondary,
+                          ),
                         if (chat.status == ChatMessageStatus.delivered)
                           Row(
                             children: const [
-                              Icon(Icons.check, size: 14, color: AppColors.textColorSecondary),
-                              Icon(Icons.check, size: 14, color: AppColors.textColorSecondary),
+                              Icon(
+                                Icons.check,
+                                size: 14,
+                                color: AppColors.textColorSecondary,
+                              ),
+                              Icon(
+                                Icons.check,
+                                size: 14,
+                                color: AppColors.textColorSecondary,
+                              ),
                             ],
                           ),
                         if (chat.status == ChatMessageStatus.seen)
@@ -665,30 +775,13 @@ class _ChatListPageState extends State<ChatListPage> with RouteAware {
                                 ? NetworkImage(chat.imageUrl)
                                 : AssetImage(chat.imageUrl) as ImageProvider,
                             onBackgroundImageError: (_, __) {
-                              debugPrint('[ChatListPage] Failed to load avatar for seen indicator');
+                              debugPrint(
+                                '[ChatListPage] Failed to load avatar for seen indicator',
+                              );
                             },
                           ),
                       ],
                     ),
-                    // if (chat.unreadCount > 0)
-                    //   Padding(
-                    //     padding: const EdgeInsets.only(top: 4.0),
-                    //     child: Container(
-                    //       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                    //       decoration: BoxDecoration(
-                    //         color: AppColors.primaryBlue,
-                    //         borderRadius: BorderRadius.circular(12.0),
-                    //       ),
-                    //       child: Text(
-                    //         '${chat.unreadCount}',
-                    //         style: const TextStyle(
-                    //           color: Colors.white,
-                    //           fontSize: 10.0,
-                    //           fontWeight: FontWeight.w600,
-                    //         ),
-                    //       ),
-                    //     ),
-                    //   ),
                   ],
                 ),
               ),

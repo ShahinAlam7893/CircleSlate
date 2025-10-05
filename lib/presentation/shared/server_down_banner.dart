@@ -20,13 +20,7 @@ class ServerAwareScaffold extends StatelessWidget {
             left: 0,
             right: 0,
             child: Container(
-              color: Colors.orange,
-              padding: const EdgeInsets.all(8),
-              child: const Text(
-                "⚠️ Server is down. Some features may not work.",
-                style: TextStyle(color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
+
             ),
           ),
       ],

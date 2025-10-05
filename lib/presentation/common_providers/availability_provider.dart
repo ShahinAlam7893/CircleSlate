@@ -90,11 +90,15 @@ class AvailabilityProvider extends ChangeNotifier {
     DateTime.saturday: 'Not Set',
   };
 
+  // Track loaded month/year to avoid redundant fetches
+  int? _loadedYear;
+  int? _loadedMonth;
+
   Map<int, int> get calendarDateStates => _calendarDateStates;
   Map<int, int> get weeklyAvailability => _weeklyAvailability;
   Map<int, String> get weeklyTimeRanges => _weeklyTimeRanges;
 
-  void resetCalendarData() {
+  void resetCalendarData({bool clearCache = false}) {
     _calendarDateStates.clear();
     for (int i = 1; i <= 31; i++) {
       _calendarDateStates[i] = 2;
@@ -103,7 +107,11 @@ class AvailabilityProvider extends ChangeNotifier {
     errorMessage = null;
     selectedDayDetails = null;
     dayDetailsError = null;
-    print('AvailabilityProvider: Reset calendar data');
+    if (clearCache) {
+      _loadedYear = null;
+      _loadedMonth = null;
+    }
+    print('AvailabilityProvider: Reset calendar data (clearCache: $clearCache)');
     notifyListeners();
   }
 
@@ -321,6 +329,39 @@ class AvailabilityProvider extends ChangeNotifier {
     }
   }
 
+  // -------------------- NEW: Update Single Date Availability --------------------
+  Future<void> updateSingleDateAvailability(int year, int month, int day, int newState) async {
+    final token = await _getToken();
+    if (token == null) {
+      errorMessage = 'Authentication token missing';
+      notifyListeners();
+      return;
+    }
+
+    final dateString = "${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
+
+    // Update local state immediately for responsiveness
+    updateDateState(day, newState);
+
+    // Save to API (using existing saveAvailabilityToAPI)
+    bool success = await saveAvailabilityToAPI(
+      selectedStatus: newState,
+      selectedTimeSlotIndex: 0, // Default to morning; adjust based on your app's logic
+      selectedRepeatOption: 0, // Once
+      startDate: dateString,
+      endDate: dateString,
+      notes: '',
+    );
+
+    if (!success) {
+      // Revert local state on failure
+      updateDateState(day, 2); // Default to "maybe"
+      print("⚠ Failed to update availability for $dateString");
+    } else {
+      print("✅ Updated availability for $dateString");
+    }
+  }
+
   // -------------------- Fetch Methods --------------------
   Future<void> fetchAvailabilityForUser(String userId) async {
     final token = await _getToken();
@@ -398,9 +439,16 @@ class AvailabilityProvider extends ChangeNotifier {
     }
   }
 
-  // Updated fetchMonthAvailabilityFromAPI method for availability_provider.dart
-
+  // Updated fetchMonthAvailabilityFromAPI method
   Future<void> fetchMonthAvailabilityFromAPI(int year, int month) async {
+    // Skip fetch if data is already loaded for this month/year
+    if (_loadedYear == year && _loadedMonth == month && _calendarDateStates.isNotEmpty) {
+      print('AvailabilityProvider: Data already loaded for $month/$year, skipping fetch');
+      isLoading = false;
+      notifyListeners();
+      return;
+    }
+
     final token = await _getToken();
     if (token == null) {
       errorMessage = 'Authentication token missing';
@@ -411,7 +459,7 @@ class AvailabilityProvider extends ChangeNotifier {
 
     isLoading = true;
     errorMessage = null;
-    resetCalendarData();
+    resetCalendarData(clearCache: true); // Explicitly clear cache for new month
     notifyListeners();
 
     try {
@@ -480,32 +528,40 @@ class AvailabilityProvider extends ChangeNotifier {
           print("Response body: ${response.body}");
         }
       } else {
-        // For own user: Fetch per day (existing logic)
+        // For own user: Parallelize per-day fetches
+        final List<Future<void>> fetchFutures = [];
         for (int day = 1; day <= daysInMonth; day++) {
-          final dateString =
-              "${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
-
+          final dateString = "${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
           final url = "${Urls.baseUrl}/calendar/day/?date=$dateString";
 
-          final response = await http.get(Uri.parse(url), headers: headers);
-
-          int statusCode = 2; // default maybe
-          if (response.statusCode == 200) {
-            final data = jsonDecode(response.body);
-            final timeSlots = data["time_slots"] ?? [];
-            if (timeSlots.isNotEmpty) {
-              final status = (timeSlots.first["status"] ?? "maybe").toLowerCase();
-              if (status == "busy") statusCode = 0;
-              if (status == "available") statusCode = 1;
-              if (status == "maybe") statusCode = 2;
-            }
-          } else {
-            print("⚠ Failed to fetch day $dateString: ${response.statusCode}");
-          }
-          _calendarDateStates[day] = statusCode;
+          fetchFutures.add(
+            http.get(Uri.parse(url), headers: headers).then((response) {
+              int statusCode = 2; // default maybe
+              if (response.statusCode == 200) {
+                final data = jsonDecode(response.body);
+                final timeSlots = data["time_slots"] ?? [];
+                if (timeSlots.isNotEmpty) {
+                  final status = (timeSlots.first["status"] ?? "maybe").toLowerCase();
+                  if (status == "busy") statusCode = 0;
+                  if (status == "available") statusCode = 1;
+                  if (status == "maybe") statusCode = 2;
+                }
+              } else {
+                print("⚠ Failed to fetch day $dateString: ${response.statusCode}");
+              }
+              _calendarDateStates[day] = statusCode;
+            }).catchError((e) {
+              print("Error fetching day $dateString: $e");
+              _calendarDateStates[day] = 2;
+            }),
+          );
         }
+        await Future.wait(fetchFutures);
         print("📅 Calendar data updated for current user: $_calendarDateStates");
       }
+
+      _loadedYear = year;
+      _loadedMonth = month;
 
     } catch (e) {
       errorMessage = 'Error fetching month availability: $e';

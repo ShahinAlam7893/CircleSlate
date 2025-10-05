@@ -26,16 +26,14 @@ class ServerStatusProvider extends ChangeNotifier {
           .get(Uri.parse(Urls.baseUrl))
           .timeout(const Duration(seconds: 5));
 
-      // Handle status codes
       if (response.statusCode == 200) {
-        _updateStatus(true); // Server healthy
+        _updateStatus(true);
       } else if ([401, 403, 404, 500, 503].contains(response.statusCode)) {
-        _updateStatus(false); // Server down
+        _updateStatus(false);
       } else {
-        _updateStatus(false); // Treat all other codes as down
+        _updateStatus(false);
       }
     } catch (_) {
-      // Timeout, connection error, DNS fail, etc.
       _updateStatus(false);
     }
   }

@@ -520,7 +520,7 @@ class _HomePageState extends State<HomePage> {
                                   border: Border.all(
                                     color: Colors.white,
                                     width: screenWidth * 0.005,
-                                  ), // Responsive border width
+                                  ),
                                 ),
                                 child: ClipOval(
                                   child: Consumer<AuthProvider>(
@@ -533,7 +533,7 @@ class _HomePageState extends State<HomePage> {
                                         final imageUrl =
                                         photo.toString().startsWith("http")
                                             ? photo.toString()
-                                            : "http://72.60.26.57$photo";
+                                            : "http:app.circleslate.com$photo";
 
                                         return Image.network(
                                           imageUrl,
@@ -1024,7 +1024,7 @@ class _HomePageState extends State<HomePage> {
 
                   SizedBox(height: mediumSpacing), // Responsive spacing
                   // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                  const MyGroupsSection(), // Placeholder for MyGroupsSection
+                  const MyGroupsSection(),
                   // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                   Padding(
                     padding: EdgeInsets.all(screenWidth * 0.02), // Responsive padding

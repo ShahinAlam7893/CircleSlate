@@ -61,7 +61,7 @@
 //     }
 //
 //     final id = widget.conversationId;
-//     final url = 'ws://72.60.26.57:8000/ws/chat/$id/?token=$token';
+//     final url = 'https://app.circleslate.com/api/chat/$id/?token=$token';
 //     print("🌐 Connecting to URL: $url");
 //
 //     try {

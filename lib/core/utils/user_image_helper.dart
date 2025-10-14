@@ -10,7 +10,6 @@ import '../network/endpoints.dart';
 class UserImageHelper {
   static const String _baseUrl = '${Urls.baseUrl}';
 
-  /// Get the current user's profile image URL
   static String? getCurrentUserImageUrl(BuildContext context) {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -36,7 +35,6 @@ class UserImageHelper {
     return null;
   }
 
-  /// Get a user's profile image URL by user ID
   static Future<String?> getUserImageUrl(String userId) async {
 
     try {
@@ -63,7 +61,7 @@ class UserImageHelper {
         if (profilePhoto != null && profilePhoto.toString().isNotEmpty) {
           String imageUrl = profilePhoto.toString();
 
-          if (imageUrl.startsWith('http')) {
+          if (imageUrl.startsWith('https')) {
             return imageUrl;
           }
 
@@ -200,7 +198,6 @@ class UserImageHelper {
     }
   }
 
-  /// Build a CircleAvatar widget with current user's image
   static Widget buildCurrentUserAvatar({
     required BuildContext context,
     double radius = 16,

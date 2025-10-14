@@ -80,7 +80,7 @@ class ChatApiService {
 
       // Replace with your actual HTTP call
       final response = await http.get(
-        Uri.parse('http://72.60.26.57/api/conversations/$conversationId/messages/'),
+        Uri.parse('https://app.circleslate.com/api/conversations/$conversationId/messages/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

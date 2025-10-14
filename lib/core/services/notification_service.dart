@@ -210,7 +210,7 @@
 // }
 //
 // class NotificationService {
-//   final String _baseUrl = 'http://72.60.26.57/api/chat/notifications/';
+//   final String _baseUrl = 'https://app.circleslate.com/api/chat/notifications/';
 //
 //   /// Fetch notifications from API
 //   Future<List<AppNotification>> fetchNotifications({int limit = 5101}) async {

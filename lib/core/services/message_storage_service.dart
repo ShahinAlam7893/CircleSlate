@@ -137,10 +137,10 @@ class MessageStorageService {
   static Set<String> _processedMessageIds = {};
 
   static Future<void> addMessage(String conversationId, StoredMessage message) async {
-    if (_processedMessageIds.contains(message.id)) {
-      debugPrint('[MessageStorageService] Already processed message: ${message.id}');
-      return;
-    }
+    // if (_processedMessageIds.contains(message.id)) {
+    //   debugPrint('[MessageStorageService] Already processed message: ${message.id}');
+    //   return;
+    // }
     try {
       final existingMessages = await loadMessages(conversationId);
 

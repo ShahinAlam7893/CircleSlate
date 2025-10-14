@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/models/group_model.dart';
 
 class GroupChatService {
-  static const String baseUrl = 'http://72.60.26.57/api/chat/conversations/';
+  static const String baseUrl = 'ws://app.circleslate.com/ws/chat/conversations/';
 
   static Future<List<GroupChat>> fetchGroupChats() async {
     final prefs = await SharedPreferences.getInstance();

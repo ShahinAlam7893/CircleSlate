@@ -115,7 +115,7 @@ class AppRouter {
     initialLocation: RoutePaths.splash,
     navigatorKey: _rootNavigatorKey,
     debugLogDiagnostics: true,
-    observers: [routeObserver], // <-- Add routeObserver here
+    observers: [routeObserver],
 
     redirect: (BuildContext context, GoRouterState state) {
       // You can add auth redirects here if needed

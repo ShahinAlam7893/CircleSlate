@@ -1,5 +1,5 @@
 class Urls {
-  static const String baseUrl = 'http://72.60.26.57/api';
+  static const String baseUrl = 'https://app.circleslate.com/api';
 
   static const String register = '$baseUrl/auth/register/';
   static const String login = '$baseUrl/auth/login/';

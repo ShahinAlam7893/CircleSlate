@@ -4,9 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ConversationManager {
-  static const String baseUrl = 'http://72.60.26.57/api/chat';
+  static const String baseUrl = 'ws://app.circleslate.com/ws/chat';
 
-  /// Get or create a one-to-one conversation between two users
   static Future<Map<String, dynamic>> getOrCreateConversation(
       String currentUserId, String partnerId, {required String partnerName}) async {
     try {
@@ -27,7 +26,6 @@ class ConversationManager {
       debugPrint('[ConversationManager] Conversation cache key: $conversationKey');
       debugPrint('[ConversationManager] Cached conversation ID: $cachedConversationId');
 
-      // 1. Check cache first
       if (cachedConversationId != null && cachedConversationId.isNotEmpty) {
         debugPrint('[ConversationManager] Found cached conversation id: $cachedConversationId');
         final existsOnServer = await _verifyConversationExists(cachedConversationId);
@@ -51,7 +49,6 @@ class ConversationManager {
         throw Exception('No authentication token found in SharedPreferences');
       }
 
-      // 2. Try to create new conversation
       final url = Uri.parse('$baseUrl/conversations/create/');
       final payload = {
         'participant_ids': [int.parse(partnerId)], // Send only partnerId

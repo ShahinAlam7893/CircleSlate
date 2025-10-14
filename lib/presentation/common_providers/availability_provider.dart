@@ -7,8 +7,16 @@ import '../../core/network/endpoints.dart';
 class AvailabilityProvider extends ChangeNotifier {
   static const String _apiUrl = "${Urls.baseUrl}/calendar/availability/";
 
+  // -------------------- Caching Strategy --------------------
+  static const Duration _cacheExpiration = Duration(minutes: 5);
+  DateTime? _lastFetchTime;
+
+  // Cache for multiple users
+  final Map<String, List<Map<String, dynamic>>> _userAvailabilityCache = {};
+  final Map<String, DateTime> _userCacheTimestamp = {};
+
   // -------------------- User Selection --------------------
-  String? selectedUserId; // ID of user whose calendar we are viewing
+  String? selectedUserId;
 
   void setSelectedUserId(String userId) {
     selectedUserId = userId.isNotEmpty ? userId : null;
@@ -65,7 +73,11 @@ class AvailabilityProvider extends ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
 
-  // New properties for day details
+  // Store raw availability records with their repeat schedules
+  List<Map<String, dynamic>> availabilityRecords = [];
+
+  // New properties for day details with caching
+  final Map<String, Map<String, dynamic>> _dayDetailsCache = {};
   Map<String, dynamic>? selectedDayDetails;
   bool isDayDetailsLoading = false;
   String? dayDetailsError;
@@ -90,9 +102,8 @@ class AvailabilityProvider extends ChangeNotifier {
     DateTime.saturday: 'Not Set',
   };
 
-  // Track loaded month/year to avoid redundant fetches
-  int? _loadedYear;
-  int? _loadedMonth;
+  // Track loaded months for multiple users - now stores year-month combinations
+  final Map<String, Set<String>> _loadedMonthsByUser = {};
 
   Map<int, int> get calendarDateStates => _calendarDateStates;
   Map<int, int> get weeklyAvailability => _weeklyAvailability;
@@ -108,8 +119,12 @@ class AvailabilityProvider extends ChangeNotifier {
     selectedDayDetails = null;
     dayDetailsError = null;
     if (clearCache) {
-      _loadedYear = null;
-      _loadedMonth = null;
+      availabilityRecords.clear();
+      _userAvailabilityCache.clear();
+      _userCacheTimestamp.clear();
+      _loadedMonthsByUser.clear();
+      _dayDetailsCache.clear();
+      _lastFetchTime = null;
     }
     print('AvailabilityProvider: Reset calendar data (clearCache: $clearCache)');
     notifyListeners();
@@ -183,8 +198,109 @@ class AvailabilityProvider extends ChangeNotifier {
     }
   }
 
-  // -------------------- NEW: Fetch Day Details --------------------
-  Future<void> fetchDayDetails(DateTime date) async {
+  int _statusStringToCode(String status) {
+    switch (status.toLowerCase()) {
+      case "busy":
+        return 0;
+      case "available":
+        return 1;
+      case "maybe":
+        return 2;
+      default:
+        return 2;
+    }
+  }
+
+  // -------------------- Check if cache is valid --------------------
+  bool _isCacheValid(String userId) {
+    final timestamp = _userCacheTimestamp[userId];
+    if (timestamp == null) return false;
+    return DateTime.now().difference(timestamp) < _cacheExpiration;
+  }
+
+  // -------------------- Apply Repeat Schedule Logic --------------------
+  void _applyRepeatSchedules(int year, int month, {List<Map<String, dynamic>>? records}) {
+    // Reset calendar states to default
+    for (int i = 1; i <= 31; i++) {
+      _calendarDateStates[i] = 2;
+    }
+
+    final recordsToUse = records ?? availabilityRecords;
+
+    // Apply each availability record with its repeat schedule
+    for (var record in recordsToUse) {
+      final startDate = DateTime.parse(record['start_date']);
+      final endDateStr = record['end_date'];
+      final endDate = endDateStr != null && endDateStr.isNotEmpty
+          ? DateTime.parse(endDateStr)
+          : startDate;
+      final repeatSchedule = record['repeat_schedule'] ?? 'once';
+
+      // Get status from time slots
+      int statusCode = 2;
+      final timeSlots = record['all_time_slots_with_status'] as Map<String, dynamic>?;
+      if (timeSlots != null && timeSlots.isNotEmpty) {
+        final firstSlot = timeSlots.values.first;
+        if (firstSlot is Map && firstSlot.containsKey('status_display')) {
+          statusCode = _statusStringToCode(firstSlot['status_display'] ?? 'maybe');
+        }
+      }
+
+      // Only process if the record is relevant to the viewing month
+      if (repeatSchedule == 'once') {
+        if (startDate.year == year && startDate.month == month) {
+          _calendarDateStates[startDate.day] = statusCode;
+        }
+      } else if (repeatSchedule == 'weekly') {
+        // Calculate if any weekly occurrence falls in this month
+        DateTime currentDate = startDate;
+        final monthStart = DateTime(year, month, 1);
+        final monthEnd = DateTime(year, month + 1, 0);
+
+        // Start from the first occurrence in or before this month
+        while (currentDate.isAfter(monthStart)) {
+          currentDate = currentDate.subtract(Duration(days: 7));
+        }
+
+        // Apply all occurrences in this month
+        while (currentDate.isBefore(monthEnd.add(Duration(days: 1))) &&
+            currentDate.isBefore(endDate.add(Duration(days: 1)))) {
+          if (currentDate.year == year &&
+              currentDate.month == month &&
+              !currentDate.isBefore(startDate)) {
+            _calendarDateStates[currentDate.day] = statusCode;
+          }
+          currentDate = currentDate.add(Duration(days: 7));
+        }
+      } else if (repeatSchedule == 'monthly') {
+        // Check if this month falls within the range
+        final currentMonthDate = DateTime(year, month, startDate.day);
+        if (!currentMonthDate.isBefore(startDate) &&
+            !currentMonthDate.isAfter(endDate)) {
+          final daysInMonth = DateTime(year, month + 1, 0).day;
+          if (startDate.day <= daysInMonth) {
+            _calendarDateStates[startDate.day] = statusCode;
+          }
+        }
+      }
+    }
+
+    print("📅 Applied repeat schedules for $month/$year: $_calendarDateStates");
+  }
+
+  // -------------------- Optimized Day Details with Caching --------------------
+  Future<void> fetchDayDetails(DateTime date, {bool forceRefresh = false}) async {
+    final dateString = "${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+    final cacheKey = "${selectedUserId ?? 'current'}_$dateString";
+
+    // Check cache first
+    if (!forceRefresh && _dayDetailsCache.containsKey(cacheKey)) {
+      print("📦 Using cached day details for $dateString");
+      selectedDayDetails = _dayDetailsCache[cacheKey];
+      notifyListeners();
+      return;
+    }
+
     final token = await _getToken();
     if (token == null) {
       dayDetailsError = 'Authentication token missing';
@@ -194,7 +310,6 @@ class AvailabilityProvider extends ChangeNotifier {
 
     isDayDetailsLoading = true;
     dayDetailsError = null;
-    selectedDayDetails = null;
     notifyListeners();
 
     try {
@@ -204,29 +319,19 @@ class AvailabilityProvider extends ChangeNotifier {
         "Authorization": "Bearer $token",
       };
 
-      final dateString = "${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-
       String url;
       if (selectedUserId != null) {
-        // For other users: Use the user-day-availability endpoint
         url = "${Urls.baseUrl}/calendar/user-day-availability/$selectedUserId/?date=$dateString";
       } else {
-        // For current user: Use the existing day endpoint
         url = "${Urls.baseUrl}/calendar/day/?date=$dateString";
       }
 
-      print('Fetching day details from: $url');
-
       final response = await http.get(Uri.parse(url), headers: headers);
-
-      print('Day details response status: ${response.statusCode}');
-      print('Day details response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
         if (selectedUserId != null) {
-          // Format the user-day-availability response
           selectedDayDetails = {
             'date': data['date'],
             'user_id': data['user_id'],
@@ -235,24 +340,26 @@ class AvailabilityProvider extends ChangeNotifier {
             'availability_id': data['availability_id'],
           };
         } else {
-          // Format the current user day response
           selectedDayDetails = {
             'date': dateString,
             'time_slots': data['time_slots'] ?? [],
             'notes': data['notes'] ?? '',
           };
         }
+
+        // Cache the result
+        _dayDetailsCache[cacheKey] = selectedDayDetails!;
+        print("💾 Cached day details for $dateString");
       } else if (response.statusCode == 404) {
-        // No availability data for this day
         selectedDayDetails = {
           'date': dateString,
           'time_slots': [],
           'notes': '',
           'message': 'No availability data for this date'
         };
+        _dayDetailsCache[cacheKey] = selectedDayDetails!;
       } else {
         dayDetailsError = 'Failed to fetch day details: ${response.statusCode}';
-        print("⚠ $dayDetailsError");
       }
     } catch (e) {
       dayDetailsError = 'Error fetching day details: $e';
@@ -314,6 +421,18 @@ class AvailabilityProvider extends ChangeNotifier {
       final response = await http.post(Uri.parse(_apiUrl), headers: headers, body: jsonEncode(body));
       if (response.statusCode == 200 || response.statusCode == 201) {
         print("✅ Availability saved: ${response.body}");
+
+        // Invalidate cache for current user
+        final userId = selectedUserId ?? 'current';
+        _userAvailabilityCache.remove(userId);
+        _userCacheTimestamp.remove(userId);
+        _loadedMonthsByUser.remove(userId);
+        _dayDetailsCache.clear(); // Clear day details cache
+
+        // Add new record to local cache
+        final newRecord = jsonDecode(response.body);
+        availabilityRecords.add(newRecord);
+
         return true;
       } else {
         print("⚠ Failed to save: ${response.statusCode} - ${response.body}");
@@ -329,40 +448,27 @@ class AvailabilityProvider extends ChangeNotifier {
     }
   }
 
-  // -------------------- NEW: Update Single Date Availability --------------------
   Future<void> updateSingleDateAvailability(int year, int month, int day, int newState) async {
-    final token = await _getToken();
-    if (token == null) {
-      errorMessage = 'Authentication token missing';
-      notifyListeners();
-      return;
-    }
-
     final dateString = "${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
 
-    // Update local state immediately for responsiveness
+    // Optimistic update
     updateDateState(day, newState);
 
-    // Save to API (using existing saveAvailabilityToAPI)
     bool success = await saveAvailabilityToAPI(
       selectedStatus: newState,
-      selectedTimeSlotIndex: 0, // Default to morning; adjust based on your app's logic
-      selectedRepeatOption: 0, // Once
+      selectedTimeSlotIndex: 0,
+      selectedRepeatOption: 0,
       startDate: dateString,
       endDate: dateString,
       notes: '',
     );
 
     if (!success) {
-      // Revert local state on failure
-      updateDateState(day, 2); // Default to "maybe"
+      updateDateState(day, 2);
       print("⚠ Failed to update availability for $dateString");
-    } else {
-      print("✅ Updated availability for $dateString");
     }
   }
 
-  // -------------------- Fetch Methods --------------------
   Future<void> fetchAvailabilityForUser(String userId) async {
     final token = await _getToken();
     if (token == null) {
@@ -378,25 +484,19 @@ class AvailabilityProvider extends ChangeNotifier {
         "Authorization": "Bearer $token",
       };
 
-      print('Fetching user availability for user_id=$userId');
       final response = await http.get(
         Uri.parse("${Urls.baseUrl}/calendar/availability/?user_id=$userId"),
         headers: headers,
       );
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         apiAvailability = _mapApiData(data);
       } else {
         errorMessage = 'Failed to fetch user availability: ${response.statusCode}';
-        print("⚠ $errorMessage");
       }
     } catch (e) {
       errorMessage = 'Error fetching user availability: $e';
-      print("🔥 $errorMessage");
     }
     notifyListeners();
   }
@@ -426,26 +526,22 @@ class AvailabilityProvider extends ChangeNotifier {
     return mapped;
   }
 
-  int _statusStringToCode(String status) {
-    switch (status.toLowerCase()) {
-      case "busy":
-        return 0;
-      case "available":
-        return 1;
-      case "maybe":
-        return 2;
-      default:
-        return 2;
-    }
-  }
+  // -------------------- Optimized Month Fetch with Smart Caching --------------------
+  Future<void> fetchMonthAvailabilityFromAPI(int year, int month, {bool forceRefresh = false}) async {
+    final userId = selectedUserId ?? 'current';
+    final monthKey = '$year-${month.toString().padLeft(2, '0')}';
 
-  // Updated fetchMonthAvailabilityFromAPI method
-  Future<void> fetchMonthAvailabilityFromAPI(int year, int month) async {
-    // Skip fetch if data is already loaded for this month/year
-    if (_loadedYear == year && _loadedMonth == month && _calendarDateStates.isNotEmpty) {
-      print('AvailabilityProvider: Data already loaded for $month/$year, skipping fetch');
-      isLoading = false;
-      notifyListeners();
+    // Check if already loaded for this user and month
+    if (!forceRefresh &&
+        _loadedMonthsByUser.containsKey(userId) &&
+        _loadedMonthsByUser[userId]!.contains(monthKey) &&
+        _isCacheValid(userId)) {
+      print('✅ Using cached data for $monthKey, user: $userId');
+      // Just reapply the schedules from cached records
+      if (_userAvailabilityCache.containsKey(userId)) {
+        _applyRepeatSchedules(year, month, records: _userAvailabilityCache[userId]);
+        notifyListeners();
+      }
       return;
     }
 
@@ -459,7 +555,6 @@ class AvailabilityProvider extends ChangeNotifier {
 
     isLoading = true;
     errorMessage = null;
-    resetCalendarData(clearCache: true); // Explicitly clear cache for new month
     notifyListeners();
 
     try {
@@ -468,21 +563,22 @@ class AvailabilityProvider extends ChangeNotifier {
         "Accept": "application/json",
         "Authorization": "Bearer $token",
       };
-      print('Fetching availability for $month/$year, user: $selectedUserId');
-
-      final daysInMonth = DateTime(year, month + 1, 0).day;
 
       if (selectedUserId != null) {
         // For other users: Use the user-month-availability endpoint
         final url = "${Urls.baseUrl}/calendar/user-month-availability/$selectedUserId/";
-        print('Fetching user month availability from: $url');
+        print('🌐 Fetching user month availability from: $url');
 
         final response = await http.get(Uri.parse(url), headers: headers);
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
 
-          // Parse the month data
+          // Reset states
+          for (int i = 1; i <= 31; i++) {
+            _calendarDateStates[i] = 2;
+          }
+
           if (data['days'] != null) {
             final days = data['days'] as List<dynamic>;
 
@@ -494,11 +590,9 @@ class AvailabilityProvider extends ChangeNotifier {
                 final day = date.day;
                 final timeSlots = dayData['time_slots'] as List<dynamic>;
 
-                // Determine overall status for the day
-                int statusCode = 2; // default maybe/not set
+                int statusCode = 2;
 
                 if (timeSlots.isNotEmpty) {
-                  // Check if any slot is available
                   bool hasAvailable = false;
                   bool hasBusy = false;
 
@@ -508,11 +602,10 @@ class AvailabilityProvider extends ChangeNotifier {
                     if (status == 'busy') hasBusy = true;
                   }
 
-                  // Priority: available > busy > maybe
                   if (hasAvailable) {
-                    statusCode = 1; // available
+                    statusCode = 1;
                   } else if (hasBusy) {
-                    statusCode = 0; // busy
+                    statusCode = 0;
                   }
                 }
 
@@ -521,47 +614,50 @@ class AvailabilityProvider extends ChangeNotifier {
             }
           }
 
-          print("📅 Calendar data updated for user $selectedUserId: $_calendarDateStates");
+          // Mark month as loaded
+          _loadedMonthsByUser.putIfAbsent(userId, () => {}).add(monthKey);
+          _userCacheTimestamp[userId] = DateTime.now();
+
+          print("📅 Calendar data updated for user $selectedUserId");
         } else {
           errorMessage = 'Failed to fetch user availability: ${response.statusCode}';
           print("⚠ $errorMessage");
-          print("Response body: ${response.body}");
         }
       } else {
-        // For own user: Parallelize per-day fetches
-        final List<Future<void>> fetchFutures = [];
-        for (int day = 1; day <= daysInMonth; day++) {
-          final dateString = "${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
-          final url = "${Urls.baseUrl}/calendar/day/?date=$dateString";
+        // For own user: Fetch all availability records once and cache them
+        if (!_userAvailabilityCache.containsKey(userId) || forceRefresh) {
+          final availUrl = "${Urls.baseUrl}/calendar/availability/";
+          print('🌐 Fetching all availability records from: $availUrl');
 
-          fetchFutures.add(
-            http.get(Uri.parse(url), headers: headers).then((response) {
-              int statusCode = 2; // default maybe
-              if (response.statusCode == 200) {
-                final data = jsonDecode(response.body);
-                final timeSlots = data["time_slots"] ?? [];
-                if (timeSlots.isNotEmpty) {
-                  final status = (timeSlots.first["status"] ?? "maybe").toLowerCase();
-                  if (status == "busy") statusCode = 0;
-                  if (status == "available") statusCode = 1;
-                  if (status == "maybe") statusCode = 2;
-                }
-              } else {
-                print("⚠ Failed to fetch day $dateString: ${response.statusCode}");
-              }
-              _calendarDateStates[day] = statusCode;
-            }).catchError((e) {
-              print("Error fetching day $dateString: $e");
-              _calendarDateStates[day] = 2;
-            }),
-          );
+          final availResponse = await http.get(Uri.parse(availUrl), headers: headers);
+
+          if (availResponse.statusCode == 200) {
+            final List<dynamic> data = jsonDecode(availResponse.body);
+            availabilityRecords = data.map((item) => item as Map<String, dynamic>).toList();
+
+            // Cache the records
+            _userAvailabilityCache[userId] = availabilityRecords;
+            _userCacheTimestamp[userId] = DateTime.now();
+
+            print("📋 Fetched and cached ${availabilityRecords.length} availability records");
+          } else {
+            errorMessage = 'Failed to fetch availability: ${availResponse.statusCode}';
+            print("⚠ $errorMessage");
+            isLoading = false;
+            notifyListeners();
+            return;
+          }
+        } else {
+          print("📦 Using cached availability records");
+          availabilityRecords = _userAvailabilityCache[userId]!;
         }
-        await Future.wait(fetchFutures);
-        print("📅 Calendar data updated for current user: $_calendarDateStates");
-      }
 
-      _loadedYear = year;
-      _loadedMonth = month;
+        // Apply repeat schedules to current month
+        _applyRepeatSchedules(year, month);
+
+        // Mark month as loaded
+        _loadedMonthsByUser.putIfAbsent(userId, () => {}).add(monthKey);
+      }
 
     } catch (e) {
       errorMessage = 'Error fetching month availability: $e';
@@ -570,5 +666,18 @@ class AvailabilityProvider extends ChangeNotifier {
 
     isLoading = false;
     notifyListeners();
+  }
+
+  // -------------------- Preload Adjacent Months --------------------
+  Future<void> preloadAdjacentMonths(int year, int month) async {
+    // Preload previous and next month in background
+    final prevMonth = month == 1 ? 12 : month - 1;
+    final prevYear = month == 1 ? year - 1 : year;
+    final nextMonth = month == 12 ? 1 : month + 1;
+    final nextYear = month == 12 ? year + 1 : year;
+
+    // Don't await - run in background
+    fetchMonthAvailabilityFromAPI(prevYear, prevMonth);
+    fetchMonthAvailabilityFromAPI(nextYear, nextMonth);
   }
 }

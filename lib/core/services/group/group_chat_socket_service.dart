@@ -7,7 +7,7 @@ import '../../../data/models/group_model.dart';
 
 class GroupChatSocketService {
   WebSocketChannel? _channel;
-  final String baseWsUrl = 'ws://72.60.26.57:8000/ws/chat/';
+  final String baseWsUrl = 'ws://app.circleslate.com/ws/chat/';
   final Function(Message) onMessageReceived;
   final Function(List<dynamic>)? onConversationMessages;
 
@@ -44,13 +44,11 @@ class GroupChatSocketService {
             final message = jsonDecode(data);
             debugPrint('[GroupChatSocketService] Received message: $message');
 
-            // Handle heartbeat messages
             if (message['type'] == 'heartbeat') {
               _handleHeartbeat(message);
               return;
             }
 
-            // Handle different message types
             if (message['type'] == 'message' && message['message'] != null) {
               // Handle message type with nested message object
               debugPrint('[GroupChatSocketService] Processing nested message');
@@ -182,8 +180,6 @@ class GroupChatSocketService {
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(delay, () {
       debugPrint('[GroupChatSocketService] Attempting to reconnect... (attempt $_reconnectAttempts)');
-      // Note: You would need to store conversationId and token to reconnect
-      // For now, we'll just log the attempt
     });
   }
 

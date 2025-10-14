@@ -4,11 +4,11 @@ import 'package:circleslate/core/network/endpoints.dart';
 import 'package:circleslate/presentation/features/event_management/view/direct_invite_page.dart';
 import 'package:circleslate/presentation/routes/app_router.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart'; // Import go_router for navigation
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // For date formatting
-import 'package:url_launcher/url_launcher.dart'; // Added for Google Calendar URL launching
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // --- AppColors ---
 // Defined here for self-containment. In a real project, this would be a shared file.
@@ -219,7 +219,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
   bool _rideNeeded = false;
   bool _addToGoogleCalendar = false;
 
-  int _selectedIndex = 0; // For the bottom navigation bar
+  int _selectedIndex = 0;
 
 
   void _showInvalidDateDialog(String message) {
@@ -292,9 +292,9 @@ class _CreateEventPageState extends State<CreateEventPage> {
     // Collect form data
     final Map<String, dynamic> eventData = {
       "title": _eventTitleController.text,
-      "date": _dateController.text, // Must be 'yyyy-MM-dd'
+      "date": _dateController.text,
       "start_time": _timeController.text,
-      "end_time": _endtimeController.text, // Must be 'HH:mm:ss'
+      "end_time": _endtimeController.text,
       "location": _locationController.text,
       "description": _descriptionController.text,
       "event_type": _isOpenInvite ? "open" : "direct",
@@ -369,7 +369,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
       setState(() {
         _dateController.text = DateFormat(
           'yyyy-MM-dd',
-        ).format(picked); // Correct date format
+        ).format(picked);
       });
     }
   }
@@ -382,13 +382,13 @@ class _CreateEventPageState extends State<CreateEventPage> {
         return Theme(
           data: ThemeData.light().copyWith(
             colorScheme: ColorScheme.light(
-              primary: AppColors.primaryBlue, // Header background color
-              onPrimary: Colors.white, // Header text color
-              onSurface: AppColors.textDark, // Body text color
+              primary: AppColors.primaryBlue,
+              onPrimary: Colors.white,
+              onSurface: AppColors.textDark,
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.primaryBlue, // Button text color
+                foregroundColor: AppColors.primaryBlue,
               ),
             ),
           ),
@@ -397,11 +397,10 @@ class _CreateEventPageState extends State<CreateEventPage> {
       },
     );
     if (picked != null) {
-      // Manually format the time to HH:mm:ss (24-hour format)
       String formattedTime =
           '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00'; // HH:mm:ss
       setState(() {
-        _timeController.text = formattedTime; // Set formatted time
+        _timeController.text = formattedTime;
       });
     }
   }
@@ -429,18 +428,15 @@ class _CreateEventPageState extends State<CreateEventPage> {
       },
     );
     if (picked != null) {
-      // Manually format the end time to HH:mm:ss (24-hour format)
       String formattedEndTime =
           '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}:00'; // HH:mm:ss
       setState(() {
-        _endtimeController.text = formattedEndTime; // Set formatted end time
+        _endtimeController.text = formattedEndTime;
       });
     }
   }
 
-  // Function to open Google Calendar with event details
   Future<void> _openGoogleCalendar() async {
-    // Parse date and times from controllers
     if (_dateController.text.isEmpty ||
         _timeController.text.isEmpty ||
         _endtimeController.text.isEmpty) {
@@ -451,7 +447,6 @@ class _CreateEventPageState extends State<CreateEventPage> {
     }
 
     try {
-      // Parse date and times
       final DateTime? eventDate = DateFormat('yyyy-MM-dd').parse(_dateController.text);
       final startTimeParts = _timeController.text.split(':');
       final endTimeParts = _endtimeController.text.split(':');
@@ -487,9 +482,8 @@ class _CreateEventPageState extends State<CreateEventPage> {
       final String location = Uri.encodeComponent(
           _locationController.text.isEmpty ? "Location" : _locationController.text);
 
-      // Format DateTime for Google Calendar: YYYYMMDDTHHMMSS
       String formatDateTime(DateTime dateTime) {
-        return dateTime.toUtc()
+        return dateTime
             .toIso8601String()
             .replaceAll('-', '')
             .replaceAll(':', '')
@@ -528,18 +522,17 @@ class _CreateEventPageState extends State<CreateEventPage> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // Define responsive font sizes for this page
     final double appBarTitleFontSize = screenWidth * 0.05;
     final double sectionTitleFontSize =
-        screenWidth * 0.038; // For "Invite Type *"
+        screenWidth * 0.038;
     final double buttonTextFontSize = screenWidth * 0.04;
     final double checkboxTextFontSize = screenWidth * 0.035;
     final double generalSpacing =
-        screenWidth * 0.05; // General vertical spacing
+        screenWidth * 0.05;
     final double inputFieldSpacing =
-        screenWidth * 0.04; // Spacing between input fields
+        screenWidth * 0.04;
     final double horizontalSpacing =
-        screenWidth * 0.04; // General horizontal spacing
+        screenWidth * 0.04;
 
     return Scaffold(
       backgroundColor: Colors.grey[100], // Light grey background
@@ -584,7 +577,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
                 child: AuthInputField(
                   controller: _dateController,
                   labelText: 'Date *',
-                  hintText: '07/15/2025',
+                  hintText: '2025-01-30',
                   suffixIcon: Icon(
                     Icons.calendar_today_outlined,
                     size: screenWidth * 0.045,
@@ -620,7 +613,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
                       child: AuthInputField(
                         controller: _endtimeController,
                         labelText: 'End Time *',
-                        hintText: '11:02 AM',
+                        hintText: '02:02 PM',
                         suffixIcon: Icon(
                           Icons.access_time,
                           size: screenWidth * 0.045,
@@ -732,7 +725,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
                           vertical: screenWidth * 0.03,
                         ), // Responsive padding
                       ),
-                      onPressed: _openGoogleCalendar, // Updated to use new function
+                      onPressed: _openGoogleCalendar,
                       child: const Text(
                         'Add to Google Calendar',
                         style: TextStyle(

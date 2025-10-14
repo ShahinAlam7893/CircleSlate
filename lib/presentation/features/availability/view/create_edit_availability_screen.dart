@@ -1,5 +1,6 @@
 import 'package:circleslate/core/constants/app_colors.dart';
 import 'package:circleslate/presentation/common_providers/availability_provider.dart';
+import 'package:circleslate/presentation/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -265,22 +266,34 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
                         listen: false,
                       );
 
-
                       final now = DateTime.now();
                       final year = now.year;
                       final month = now.month.toString().padLeft(2, '0');
-                      String selectedDay = padDay(
-                        _days[_selectedDayIndex]["date"]!,
-                      );
+                      String selectedDay = padDay(_days[_selectedDayIndex]["date"]!);
                       String startDate = "$year-$month-$selectedDay";
 
-                      final endDateObj = DateTime(
-                        year,
-                        int.parse(month),
-                        int.parse(selectedDay),
-                      );
-                      String endDate =
-                          "${endDateObj.year}-${endDateObj.month.toString().padLeft(2, '0')}-${endDateObj.day.toString().padLeft(2, '0')}";
+                      // Calculate end_date based on repeat option
+                      String endDate;
+                      final startDateObj = DateTime(year, int.parse(month), int.parse(selectedDay));
+
+                      if (_selectedRepeatOption == 0) {
+                        // Just this once - same as start date
+                        endDate = startDate;
+                      } else if (_selectedRepeatOption == 1) {
+                        // Repeat weekly - extend for 12 weeks (3 months)
+                        final endDateObj = startDateObj.add(Duration(days: 7 * 12));
+                        endDate = "${endDateObj.year}-${endDateObj.month.toString().padLeft(2, '0')}-${endDateObj.day.toString().padLeft(2, '0')}";
+                      } else if (_selectedRepeatOption == 2) {
+                        // Repeat monthly - extend for 12 months (1 year)
+                        final endDateObj = DateTime(
+                          startDateObj.year + 1,
+                          startDateObj.month,
+                          startDateObj.day,
+                        );
+                        endDate = "${endDateObj.year}-${endDateObj.month.toString().padLeft(2, '0')}-${endDateObj.day.toString().padLeft(2, '0')}";
+                      } else {
+                        endDate = startDate;
+                      }
 
                       // 🚀 Call API
                       bool success = await provider.saveAvailabilityToAPI(
@@ -290,14 +303,13 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
                         startDate: startDate,
                         endDate: endDate,
                         notes: null,
-                        // token: null, // Later: fetch from SharedPreferences
                       );
 
                       if (success) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Availability Saved!')),
                         );
-                        context.push('/up_coming_events');
+                        context.pushNamed(AppRoutes.home);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(

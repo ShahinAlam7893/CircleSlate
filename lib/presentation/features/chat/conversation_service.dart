@@ -6,7 +6,7 @@ import '../../../data/models/group_model.dart';
 import '../../data/models/chat_model.dart';
 
 class ChatService {
-  static const String baseUrl = 'http://72.60.26.57/api/chat';
+  static const String baseUrl = 'https://app.circleslate.com/api/chat';
 
 
   static Future<String?> getOrCreateConversation(

@@ -46,7 +46,7 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
   bool _isTyping = false;
   bool _isSomeoneTyping = false;
 
-  // Store user images for better performance
+  final Map<String, String?> _userName = {};
   final Map<String, String?> _userImages = {};
 
   // Group information
@@ -66,10 +66,8 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
     _initializeConversation();
     _messageController.addListener(_handleTyping);
     _messageController.addListener(() {
-      // Trigger rebuild to update send button state
       if (mounted) setState(() {});
     });
-
 
   }
 
@@ -108,7 +106,7 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
       if (token == null) return;
 
       final response = await http.get(
-        Uri.parse('http://72.60.26.57/api/chat/conversations/${widget.groupId}/'),
+        Uri.parse('https://app.circleslate.com/api/chat/conversations/${widget.groupId}/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -133,7 +131,6 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
                   TextButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      Navigator.pop(context); // go back
                     },
                     child: const Text("OK"),
                   ),
@@ -200,7 +197,6 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
         }
       });
 
-      // Request conversation messages from server via WebSocket
       _requestConversationMessages();
 
     } catch (e) {
@@ -234,7 +230,6 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
     }
   }
 
-  /// Handle conversation messages from server
   void _handleConversationMessages(List<dynamic> messagesData) async {
     debugPrint('[GroupConversationPage] Processing ${messagesData.length} conversation messages');
 
@@ -390,7 +385,6 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
       // Current user - get from AuthProvider
       imageUrl = UserImageHelper.getCurrentUserImageUrl(context);
     } else {
-      // Other user - get from API
       try {
         imageUrl = await UserImageHelper.getUserImageUrl(userId);
         debugPrint('[GroupConversationPage] Fetched image for user $userId: $imageUrl');
@@ -400,7 +394,6 @@ class _GroupConversationPageState extends State<GroupConversationPage> with Widg
       }
     }
 
-    // Cache the result
     _userImages[userId] = imageUrl;
     return imageUrl;
   }

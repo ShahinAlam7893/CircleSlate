@@ -43,6 +43,7 @@ class GroupParticipant {
 class Message {
   final String id;
   final String senderId;
+  final String senderName;
   final String content;
   final String timestamp;
   final String messageType;
@@ -50,6 +51,7 @@ class Message {
   Message({
     required this.id,
     required this.senderId,
+    required this.senderName,
     required this.content,
     required this.timestamp,
     required this.messageType,
@@ -57,12 +59,30 @@ class Message {
 
   factory Message.fromJson(Map<String, dynamic> json) {
     String senderId;
-    if (json.containsKey('sender') && json['sender'] != null && json['sender']['id'] != null) {
+    String senderName = 'Unknown'; // ✅ default
+
+    // Extract senderId (your current logic)
+    if (json.containsKey('sender') &&
+        json['sender'] != null &&
+        json['sender']['id'] != null) {
       senderId = json['sender']['id'].toString();
+
+      // ✅ Try to get sender name from nested sender object
+      senderName =
+          (json['sender']['full_name'] ??
+                  json['sender']['name'] ??
+                  json['sender']['username'] ??
+                  json['sender']['email'] ??
+                  'Unknown')
+              .toString();
     } else if (json.containsKey('sender_id') && json['sender_id'] != null) {
       senderId = json['sender_id'].toString();
+      senderName =
+          json['sender_name'] ?? json['name'] ?? json['user_name'] ?? 'Unknown';
     } else if (json.containsKey('user_id') && json['user_id'] != null) {
       senderId = json['user_id'].toString();
+      senderName =
+          json['user_name'] ?? json['name'] ?? json['username'] ?? 'Unknown';
     } else {
       senderId = 'unknown';
     }
@@ -70,8 +90,9 @@ class Message {
     return Message(
       id: json['id'].toString(),
       senderId: senderId,
-      content: json['content'],
-      timestamp: json['timestamp'],
+      senderName: senderName,
+      content: json['content'] ?? '',
+      timestamp: json['timestamp'] ?? '',
       messageType: json['message_type'] ?? 'text',
     );
   }
@@ -111,7 +132,10 @@ class GroupChat {
     required this.isCurrentUserAdminInGroup,
   });
 
-  factory GroupChat.fromJson(Map<String, dynamic> json, {required String currentUserId}) {
+  factory GroupChat.fromJson(
+    Map<String, dynamic> json, {
+    required String currentUserId,
+  }) {
     final lastMessage = json['last_message'] != null
         ? Message.fromJson(json['last_message'])
         : null;
@@ -121,9 +145,11 @@ class GroupChat {
       id: json['id'].toString(),
       name: json['name'],
       isGroup: json['is_group'] ?? false,
-      GroupParticipants: (json['GroupParticipants'] as List<dynamic>?)
-          ?.map((p) => GroupParticipant.fromJson(p))
-          .toList() ?? [],
+      GroupParticipants:
+          (json['GroupParticipants'] as List<dynamic>?)
+              ?.map((p) => GroupParticipant.fromJson(p))
+              .toList() ??
+          [],
       lastMessage: lastMessage?.content,
       lastMessageTime: lastMessage?.timestamp,
       unreadCount: json['unread_count'] ?? 0,
@@ -131,7 +157,8 @@ class GroupChat {
       displayPhoto: json['display_photo'] ?? AppAssets.groupChatIcon,
       GroupParticipantCount: json['GroupParticipant_count'] ?? 0,
       userRole: json['user_role'],
-      status: ChatMessageStatus.seen, isCurrentUserAdminInGroup: true,
+      status: ChatMessageStatus.seen,
+      isCurrentUserAdminInGroup: true,
     );
   }
 }
@@ -213,7 +240,6 @@ class GroupMembersResponse {
   }
 }
 
-
 enum MemberRole { admin, member }
 
 class GroupMember {
@@ -246,17 +272,21 @@ class GroupMember {
     String? imageUrl;
     if (json['avatar'] != null && json['avatar'].toString().isNotEmpty) {
       imageUrl = json['avatar'];
-    } else if (json['image_url'] != null && json['image_url'].toString().isNotEmpty) {
+    } else if (json['image_url'] != null &&
+        json['image_url'].toString().isNotEmpty) {
       imageUrl = json['image_url'];
-    } else if (json['profile_image'] != null && json['profile_image'].toString().isNotEmpty) {
+    } else if (json['profile_image'] != null &&
+        json['profile_image'].toString().isNotEmpty) {
       imageUrl = json['profile_image'];
-    } else if (json['profile_photo_url'] != null && json['profile_photo_url'].toString().isNotEmpty) {
+    } else if (json['profile_photo_url'] != null &&
+        json['profile_photo_url'].toString().isNotEmpty) {
       imageUrl = json['profile_photo_url'];
     }
 
     return GroupMember(
       id: (json['id'] ?? json['user_id'] ?? '').toString(),
-      name: (json['name'] ?? json['full_name'] ?? json['username'] ?? 'Unknown').toString(),
+      name: (json['name'] ?? json['full_name'] ?? json['username'] ?? 'Unknown')
+          .toString(),
       email: (json['email'] ?? '').toString(),
       children: (json['children'] ?? '').toString(),
       imageUrl: imageUrl,

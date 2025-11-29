@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:circleslate/presentation/common_providers/auth_provider.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 
 // For self-containment in this Canvas, AppColors and AuthInputField are defined here.
 class AppColors {
@@ -126,9 +127,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         context.push('/otp_page', extra: _emailController.text.trim());
       } else if (!success && mounted) {
         // Show a SnackBar with the error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(authProvider.errorMessage ?? 'An unknown error occurred.')),
-        );
+        SnackbarUtils.showError(context, authProvider.errorMessage ?? 'An unknown error occurred.');
       }
     }
   }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:circleslate/core/constants/app_assets.dart';
 import 'package:circleslate/core/constants/app_colors.dart';
 import 'package:circleslate/core/services/user_search_service.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/data/models/user_search_result_model.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -65,11 +66,7 @@ class _DirectInvitePageState extends State<DirectInvitePage> {
 
   void _sendInvites() {
     if (_selectedUsers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select at least one user to invite.'),
-        ),
-      );
+      SnackbarUtils.showWarning(context, 'Please select at least one user to invite.');
       return;
     }
 
@@ -81,9 +78,7 @@ class _DirectInvitePageState extends State<DirectInvitePage> {
       '[DirectInvitePage] Invites JSON (IDs only): ${InviteStorage().invitesJson}',
     );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Invites saved globally as JSON!')),
-    );
+    SnackbarUtils.showSuccess(context, 'Invites saved globally as JSON!');
   }
 
   @override

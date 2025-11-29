@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:circleslate/core/network/endpoints.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/presentation/features/event_management/view/direct_invite_page.dart';
 import 'package:circleslate/presentation/routes/app_router.dart';
 import 'package:flutter/material.dart';
@@ -440,9 +441,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
     if (_dateController.text.isEmpty ||
         _timeController.text.isEmpty ||
         _endtimeController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill in date, start time, and end time")),
-      );
+      SnackbarUtils.showWarning(context, "Please fill in date, start time, and end time");
       return;
     }
 
@@ -468,9 +467,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
       );
 
       if (endDateTime.isBefore(startDateTime) || endDateTime.isAtSameMomentAs(startDateTime)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("End time must be after start time")),
-        );
+        SnackbarUtils.showWarning(context, "End time must be after start time");
         return;
       }
 
@@ -507,14 +504,10 @@ class _CreateEventPageState extends State<CreateEventPage> {
           throw 'Could not open Google Calendar';
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error opening Google Calendar: $e")),
-        );
+        SnackbarUtils.showError(context, "Error opening Google Calendar: $e");
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error processing event details: $e")),
-      );
+      SnackbarUtils.showError(context, "Error processing event details: $e");
     }
   }
 

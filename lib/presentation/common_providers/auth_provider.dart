@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:circleslate/data/services/user_service.dart';
 import 'package:circleslate/data/services/api_base_helper.dart';
@@ -80,10 +79,19 @@ class AuthProvider extends ChangeNotifier {
       );
 
       _setLoading(false);
-      print("🔍 Register Response Status: ${response.body}");
-      return response.statusCode == 200 || response.statusCode == 201;
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        // Use helper method to get user-friendly error message
+        final userFriendlyMessage = _getUserFriendlyErrorMessage(
+          response.statusCode, 
+          response.body
+        );
+        return _setError(userFriendlyMessage);
+      }
     } catch (e) {
-      return _setError('An unexpected error occurred: $e');
+      return _setError('An unexpected error occurred. Please try again.');
     }
   }
 
@@ -108,31 +116,29 @@ class AuthProvider extends ChangeNotifier {
         await fetchUserProfile();
         await _saveTokensToStorage();
         aToken = await loadTokensFromStorage();
-        print("Token from storage after login: $aToken");
 
         _setLoading(false);
         notifyListeners();
         return true;
       }
 
-      return _setError(data['message'] ?? 'Login failed.');
+      // Use helper method to get user-friendly error message
+      final userFriendlyMessage = _getUserFriendlyErrorMessage(
+        response.statusCode, 
+        data['message']
+      );
+      return _setError(userFriendlyMessage);
     } catch (e) {
-      return _setError(e.toString());
+      return _setError('An unexpected error occurred. Please try again.');
     }
   }
 
   Future<bool> addChild(String name, int age) async {
-    final url = Uri.parse('${Urls.baseUrl}/auth/children/');
+    final url = Uri.parse(Urls.children);
 
     final prefs = await SharedPreferences.getInstance();
     final savedAccessToken = prefs.getString('accessToken');
     String? token = savedAccessToken;
-
-    // 🛠 Debug: Print request details
-    print('--- ADD CHILD API CALL ---');
-    print('URL: $url');
-    print('Headers: {Content-Type: application/json, Authorization: Bearer $token}');
-    print('Body: ${jsonEncode({'name': name, 'age': age})}');
 
     final response = await http.post(
       url,
@@ -143,26 +149,20 @@ class AuthProvider extends ChangeNotifier {
       body: jsonEncode({'name': name, 'age': age}),
     );
 
-    // 🛠 Debug: Print response details
-    print('Status Code: ${response.statusCode}');
-    print('Response Body: ${response.body}');
-
     if (response.statusCode == 201 || response.statusCode == 200) {
-      print('✅ Child added successfully!');
       return true;
     } else {
-      print('❌ Failed to add child: ${response.body}');
       return false;
     }
   }
 
   Future<List<Map<String, dynamic>>> fetchChildren() async {
-    final url = Uri.parse('${Urls.baseUrl}/auth/children/');
+    final url = Uri.parse(Urls.children);
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedAccessToken = prefs.getString('accessToken');
       String? token = savedAccessToken;
-      print(token);
+      
       final response = await http.get(
         url,
         headers: {
@@ -170,10 +170,6 @@ class AuthProvider extends ChangeNotifier {
           'Authorization': 'Bearer $token',
         },
       );
-
-
-      debugPrint("📡 GET Children Status: ${response.statusCode}");
-      debugPrint("📡 Response: ${response.body}");
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -184,7 +180,6 @@ class AuthProvider extends ChangeNotifier {
           };
         }).toList();
       } else {
-        debugPrint("❌ Failed to fetch children: ${response.body}");
         return [];
       }
     } catch (e) {
@@ -273,11 +268,7 @@ class AuthProvider extends ChangeNotifier {
 
       _setLoading(false);
 
-      print("🔍 Update Password Response: ${response.body}");
-      print("📡 Status Code: ${response.statusCode}");
-
       if (response.statusCode == 200) {
-        print('✅ Password updated successfully.');
         return true;
       }
 
@@ -287,13 +278,11 @@ class AuthProvider extends ChangeNotifier {
 
     } catch (e) {
       _setLoading(false);
-      print('💥 Exception during update password: $e');
       return _setError('An unexpected error occurred while updating password.');
     }
   }
 
   // -------------------- RESET PASSWORD (Forgot password, not logged-in) --------------------
-
 
   Future<bool> resetPassword({
     required String newPassword,
@@ -310,7 +299,7 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
 
     try {
-      final url = Uri.parse('${Urls.baseUrl}/auth/reset-password/');
+      final url = Uri.parse(Urls.resetPasswordAlt);
 
       final response = await http.post(
         url,
@@ -325,11 +314,7 @@ class AuthProvider extends ChangeNotifier {
 
       _setLoading(false);
 
-      print("🔍 Reset Password Response: ${response.body}");
-      print("📡 Status Code: ${response.statusCode}");
-
       if (response.statusCode == 200) {
-        print('✅ Password reset successfully (via forgot password).');
         return true;
       }
 
@@ -339,15 +324,12 @@ class AuthProvider extends ChangeNotifier {
 
     } catch (e) {
       _setLoading(false);
-      print('💥 Exception during reset password: $e');
       return _setError('An unexpected error occurred during password reset.');
     }
   }
 
   // -------------------- FETCH USER PROFILE (For Home Screen) --------------------
   Future<bool> fetchUserProfile() async {
-    print("🔍 fetchUserProfile() called");
-
     if (_accessToken == null) {
       return _setError("No access token found. Please login again.");
     }
@@ -359,9 +341,6 @@ class AuthProvider extends ChangeNotifier {
         Urls.userProfile,
         token: _accessToken,
       );
-
-      print("📡 API Status Code: ${response.statusCode}");
-      print("📡 API Response Body: ${response.body}");
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -378,8 +357,6 @@ class AuthProvider extends ChangeNotifier {
           "children": data["profile"]?["children"] ?? []
         };
 
-        print("✅ Parsed User Profile: $_userProfile");
-
         // Save user ID to SharedPreferences for persistence
         await _saveUserProfileToStorage();
 
@@ -390,7 +367,6 @@ class AuthProvider extends ChangeNotifier {
         return _setError("Failed to load profile data.");
       }
     } catch (e) {
-      print("❌ Error loading profile: $e");
       return _setError("Error loading profile: $e");
     }
   }
@@ -429,19 +405,13 @@ class AuthProvider extends ChangeNotifier {
   // -------------------- UPDATE USER PROFILE --------------------
   Future<bool> updateUserProfile(Map<String, dynamic> updatedData) async {
     try {
-      print('🔄 Starting profile update...');
-      print('📦 Updated data: $updatedData');
-
-      final token = _accessToken; // Direct access, no await needed
-      print('🔑 Token loaded: ${token != null ? 'Yes' : 'No'}');
-      print('🔑 Token loaded: ${token}');
+      final token = _accessToken;
 
       if (token == null) {
-        print('❌ No token found. Cannot update profile.');
         return false;
       }
 
-      final uri = Uri.parse('${Urls.baseUrl}/auth/profile/update/');
+      final uri = Uri.parse(Urls.updateProfile);
       final request = http.MultipartRequest('PATCH', uri);
 
       // Authorization header
@@ -450,13 +420,11 @@ class AuthProvider extends ChangeNotifier {
       // Text fields
       if (updatedData['full_name'] != null) {
         request.fields['full_name'] = updatedData['full_name'];
-        print('📝 Added field: full_name = ${updatedData['full_name']}');
       }
 
       // Profile phone number (nested field)
       if (updatedData['phone_number'] != null) {
         request.fields['profile.phone_number'] = updatedData['phone_number'];
-        print('📞 Added field: profile.phone_number = ${updatedData['phone_number']}');
       }
 
       // Children (if needed)
@@ -467,39 +435,26 @@ class AuthProvider extends ChangeNotifier {
       // Profile photo
       if (updatedData['profile_image'] != null &&
           File(updatedData['profile_image']).existsSync()) {
-        print('📷 Adding profile image: ${updatedData['profile_image']}');
         request.files.add(
           await http.MultipartFile.fromPath(
             'profile_photo', // API expects this name
             updatedData['profile_image'],
           ),
         );
-      } else {
-        print('⚠️ No profile image to upload.');
       }
-
-      // Print all request fields before sending
-      print('📤 Final request fields: ${request.fields}');
-      print('📤 Final request files: ${request.files.map((f) => f.filename).toList()}');
 
       // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('📥 Response status: ${response.statusCode}');
-      print('📥 Response body: ${response.body}');
-
       if (response.statusCode == 200) {
-        print('✅ Profile updated successfully!');
         // Refresh profile data and notify listeners
         await refreshUserData();
         return true;
       } else {
-        print('❌ Update failed.');
         return false;
       }
     } catch (e) {
-      print('💥 Error updating profile: $e');
       return false;
     }
   }
@@ -573,6 +528,45 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = false;
     Future.microtask(() => notifyListeners());
     return false;
+  }
+
+  /// Helper method to convert technical errors into user-friendly messages
+  String _getUserFriendlyErrorMessage(int statusCode, String? serverMessage) {
+    switch (statusCode) {
+      case 400:
+        return 'Please check your information and try again.';
+      case 401:
+        return 'Invalid email or password. Please try again.';
+      case 403:
+        return 'Access denied. Please contact support.';
+      case 404:
+        return 'Service not found. Please try again later.';
+      case 409:
+        return 'An account with this email already exists.';
+      case 422:
+        return 'Please check your information and try again.';
+      case 429:
+        return 'Too many attempts. Please wait a moment and try again.';
+      case 500:
+      case 502:
+      case 503:
+      case 504:
+        return 'Server is temporarily unavailable. Please try again later.';
+      default:
+        // Try to extract meaningful message from server response
+        if (serverMessage != null && serverMessage.isNotEmpty) {
+          // Check if it's a user-friendly message (no technical details)
+          if (!serverMessage.contains('status') && 
+              !serverMessage.contains('error') && 
+              !serverMessage.contains('exception') &&
+              !serverMessage.contains('{') &&
+              !serverMessage.contains('[') &&
+              serverMessage.length < 100) {
+            return serverMessage;
+          }
+        }
+        return 'Something went wrong. Please try again.';
+    }
   }
 
   void setTokens(String? accessToken, String? refreshToken) {

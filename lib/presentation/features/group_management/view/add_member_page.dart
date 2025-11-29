@@ -3,6 +3,7 @@ import 'package:circleslate/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/services/user_search_service.dart';
 import '../../../../data/models/user_search_result_model.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 
 class AddMemberPage extends StatefulWidget {
   final String conversationId;
@@ -110,9 +111,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
 
   void _addSelectedMembers() async {
     if (_selectedUsers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one user to add')),
-      );
+      SnackbarUtils.showWarning(context, 'Please select at least one user to add');
       return;
     }
 
@@ -124,9 +123,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
       Navigator.pop(context, userIds);
     } catch (e) {
       setState(() => _isAddingMembers = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      SnackbarUtils.showError(context, 'Error: ${e.toString()}');
     }
   }
 

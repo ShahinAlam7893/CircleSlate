@@ -1,5 +1,6 @@
 import 'package:circleslate/core/constants/app_assets.dart';
 import 'package:circleslate/core/constants/app_colors.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/presentation/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -96,9 +97,7 @@ class _OpenInvitePageState extends State<OpenInvitePage> {
   void _postOpenInvite() {
     if (_formKey.currentState!.validate()) {
       // Logic to post the open invite
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Open Invite Posted!')));
+      SnackbarUtils.showSuccess(context, 'Open Invite Posted!');
       // You would typically send this data to a backend
       print('Activity Title: ${_activityTitleController.text}');
       print('Date: ${_dateController.text}');

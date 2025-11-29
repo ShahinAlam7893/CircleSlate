@@ -3,6 +3,7 @@ import 'package:circleslate/core/constants/app_colors.dart';
 import 'package:circleslate/presentation/features/settings/view/edit_profile_page.dart'
     hide AppColors, AppAssets;
 import 'package:circleslate/presentation/routes/app_router.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart'; // ✅ For AuthProvider
@@ -388,7 +389,7 @@ class _ProfilePageState extends State<ProfilePage> {
               );
 
               if (updatedData != null) {
-                // Update local state with new data
+                // First update local state with new data for immediate UI update
                 setState(() {
                   _fullName = updatedData['fullName'] ?? _fullName;
                   _email = updatedData['email'] ?? _email;
@@ -400,21 +401,26 @@ class _ProfilePageState extends State<ProfilePage> {
                     };
                   }).toList() ?? _children;
                   _profileImageUrl = updatedData['profileImageUrl']?.toString() ?? _profileImageUrl;
-                  _isLoadingChildren = false; // Ensure loading state is false
+                  _isLoadingChildren = false;
                 });
 
-                // Refresh profile data to ensure consistency
-                await _fetchProfileData();
+                // Force refresh from API to ensure data consistency
+                final authProvider = context.read<AuthProvider>();
+                await authProvider.refreshUserData();
+                
+                // Update local state with fresh API data
+                final freshProfile = authProvider.userProfile;
+                if (freshProfile != null && mounted) {
+                  _updateLocalDataFromProfile(freshProfile);
+                }
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Profile updated successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
+                SnackbarUtils.showSuccess(
+                  context,
+                  'Profile updated successfully!',
                 );
               } else {
-                // If no data returned, still refresh to get latest data
-                await _refreshChildrenData();
+                // If no data returned, force refresh to get latest data
+                await _fetchProfileData();
               }
             },
           ),

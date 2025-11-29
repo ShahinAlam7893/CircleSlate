@@ -1,4 +1,5 @@
 import 'package:circleslate/core/constants/app_colors.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/presentation/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart'; // For navigation
@@ -83,9 +84,7 @@ class SettingsPage extends StatelessWidget {
                           Navigator.of(dialogContext).pop();
 
                           // Use the scaffold context to show SnackBar
-                          ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-                            const SnackBar(content: Text('Logging Out...')),
-                          );
+                          SnackbarUtils.showLoading(scaffoldContext, 'Logging Out...');
 
                           // Perform logout
                           final authProvider = Provider.of<AuthProvider>(scaffoldContext, listen: false);

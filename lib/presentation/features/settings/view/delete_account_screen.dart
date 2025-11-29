@@ -4,6 +4,7 @@ import 'package:circleslate/core/constants/app_colors.dart'; // Ensure this impo
 import 'package:circleslate/core/constants/app_strings.dart'; // Ensure this import path is correct
 import 'package:circleslate/core/constants/app_assets.dart'; // Ensure this import path is correct
 import 'package:circleslate/presentation/widgets/primary_button.dart'; // Reusing your PrimaryButton
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 
 class DeleteAccountScreen extends StatefulWidget {
   const DeleteAccountScreen({Key? key}) : super(key: key);
@@ -20,9 +21,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     print('Attempting to delete account...');
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account deleted successfully!')),
-        );
+        SnackbarUtils.showSuccess(context, 'Account deleted successfully!');
         context.pop();
       }
     });

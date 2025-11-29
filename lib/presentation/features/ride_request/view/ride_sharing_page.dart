@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:circleslate/core/constants/app_colors.dart';
 import 'package:circleslate/core/network/endpoints.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/presentation/features/ride_request/services/RideService.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -192,9 +193,7 @@ class _RideSharingPageState extends State<RideSharingPage> {
       // If "detail" key exists, show it, otherwise fallback to whole body
       final errorMessage = errorData['detail'] ?? response.body;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to accept ride:\n$errorMessage')),
-      );
+      SnackbarUtils.showError(context, 'Failed to accept ride:\n$errorMessage');
       print('Failed to accept ride.');
     }
   }

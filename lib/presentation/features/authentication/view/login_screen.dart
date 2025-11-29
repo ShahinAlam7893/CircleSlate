@@ -3,9 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:circleslate/core/constants/app_assets.dart';
 import 'package:circleslate/core/constants/app_colors.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/presentation/common_providers/auth_provider.dart';
 import 'package:circleslate/presentation/widgets/auth_input_field.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -31,9 +31,7 @@ class _LoginPageState extends State<LoginPage> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Processing...')),
-      );
+      SnackbarUtils.showLoading(context, 'Processing...');
 
       print('Attempting login with email: ${_emailController.text}');
       final success = await authProvider.loginUser(
@@ -42,20 +40,10 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login successful!'),
-            backgroundColor: AppColors.primaryBlue,
-          ),
-        );
+        SnackbarUtils.showSuccess(context, 'Login successful!');
         context.go('/home');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Login failed.'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        SnackbarUtils.showError(context, authProvider.errorMessage ?? 'Login failed.');
       }
     }
   }

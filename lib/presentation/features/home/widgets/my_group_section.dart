@@ -9,6 +9,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/network/endpoints.dart';
 import '../../../common_providers/auth_provider.dart';
 import '../../../routes/app_router.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 
 class MyGroupsSection extends StatefulWidget {
   const MyGroupsSection({Key? key}) : super(key: key);
@@ -49,7 +50,7 @@ class _MyGroupsSectionState extends State<MyGroupsSection> {
       debugPrint('Access Token: $token');
 
       final response = await http.get(
-        Uri.parse('${Urls.baseUrl}/chat/groups/user-groups/'),
+        Uri.parse(Urls.userGroups),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -68,7 +69,7 @@ class _MyGroupsSectionState extends State<MyGroupsSection> {
               .map((group) => {
             'id': group['id'],
             'name': group['name'],
-            'isCurrentUserAdminInGroup': group['is_admin'] ?? false, // Fetch admin status
+            'isCurrentUserAdminInGroup': group['is_admin'] ?? false,
           })
               .toList();
           debugPrint('Processed Groups: $_groups');
@@ -141,9 +142,7 @@ class _MyGroupsSectionState extends State<MyGroupsSection> {
               return GestureDetector(
                 onTap: () {
                   if (currentUserId == null || currentUserId!.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('User ID is missing. Please log in again.')),
-                    );
+                    SnackbarUtils.showError(context, 'User ID is missing. Please log in again.');
                     return;
                   }
                   context.push(

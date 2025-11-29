@@ -11,6 +11,7 @@ import 'package:intl/intl.dart'; // For date parsing
 import 'package:url_launcher/url_launcher.dart'; // For Google Calendar URL launching
 
 import '../../../common_providers/user_events_provider.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import '../controllers/eventManagementControllers.dart';
 
 // --- AppColors (Unchanged) ---
@@ -102,6 +103,8 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
 
   late Future<Event> _eventDetails;
   bool _isNavigating = false; // Flag to prevent multiple navigations
+  bool _isJoinLoading = false; // Loading state for Join button
+  bool _isDeclineLoading = false; // Loading state for Decline button
 
   @override
   void initState() {
@@ -112,9 +115,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
   // Add event to Google Calendar
   Future<void> _addToGoogleCalendar(Event event) async {
     if (event.date.isEmpty || event.startTime.isEmpty || event.endTime.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Event date, start time, or end time is missing")),
-      );
+      SnackbarUtils.showWarning(context, "Event date, start time, or end time is missing");
       return;
     }
 
@@ -140,9 +141,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
       );
 
       if (endDateTime.isBefore(startDateTime) || endDateTime.isAtSameMomentAs(startDateTime)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("End time must be after start time")),
-        );
+        SnackbarUtils.showWarning(context, "End time must be after start time");
         return;
       }
 
@@ -170,21 +169,28 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
           throw 'Could not open Google Calendar';
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error opening Google Calendar: $e")),
-        );
+        SnackbarUtils.showError(context, "Error opening Google Calendar: $e");
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error processing event details: $e")),
-      );
+      SnackbarUtils.showError(context, "Error processing event details: $e");
     }
   }
 
-  void _handleResponse(String responseType, Event event) {
+  Future<void> _handleResponse(String responseType, Event event) async {
     if (_isNavigating) return; // Prevent multiple response submissions
 
-    EventService.sendResponse(widget.eventId, responseType).then((_) {
+    setState(() {
+      _isNavigating = true;
+      // Set loading state for the appropriate button
+      if (responseType == 'going') {
+        _isJoinLoading = true;
+      } else {
+        _isDeclineLoading = true;
+      }
+    });
+
+    try {
+      await EventService.sendResponse(widget.eventId, responseType);
       final userEventsProvider = Provider.of<UserEventsProvider>(context, listen: false);
       if (responseType == 'going') {
         userEventsProvider.addGoingDate(event.date);
@@ -193,31 +199,35 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
         setState(() {
           _isJoining = true;
         });
+        // Show success message
+        SnackbarUtils.showSuccess(context, 'Successfully joined the event!');
       } else {
         userEventsProvider.removeGoingDate(event.date);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You have declined the event')),
-        );
+        SnackbarUtils.showSuccess(context, 'Successfully declined the event!');
         setState(() {
           _isNavigating = true; // Set flag to prevent further actions
         });
         // Navigate immediately to prevent re-fetch
         context.go('/home'); // Or '/notifications'
       }
-    }).catchError((error) {
+    } catch (error) {
       print('Error submitting response: $error');
       String errorMessage = 'Error submitting response: $error';
       if (error.toString().contains('You don\'t have permission to respond to this event')) {
         errorMessage = 'You are not authorized to respond to this event.';
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
+      SnackbarUtils.showError(context, errorMessage);
       setState(() {
         _isNavigating = true; // Set flag to prevent further actions
       });
       context.go('/home'); // Navigate away on error
-    });
+    } finally {
+      setState(() {
+        _isNavigating = false;
+        _isJoinLoading = false;
+        _isDeclineLoading = false;
+      });
+    }
   }
 
   void _refreshEventDetails() {
@@ -281,9 +291,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
                     _isNavigating = true;
                   });
                   context.go('/home');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('You no longer have access to this event')),
-                  );
+                  SnackbarUtils.showError(context, 'You no longer have access to this event');
                 }
               });
               return const Center(child: CircularProgressIndicator());
@@ -459,73 +467,135 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Expanded(
-                              child: ElevatedButton(
-                                onPressed: _isNavigating
-                                    ? null
-                                    : () {
-                                  setState(() {
-                                    _isJoining = true;
-                                  });
-                                  _handleResponse('going', event);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _isJoining ? AppColors.goingButtonColor : Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.0),
-                                    side: BorderSide(
-                                      color: _isJoining ? AppColors.goingButtonColor : AppColors.inputOutline,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      spreadRadius: 0,
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
                                     ),
-                                  ),
-                                  elevation: 0,
-                                  padding: EdgeInsets.symmetric(vertical: screenWidth * 0.03),
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.06),
+                                      spreadRadius: 0,
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
                                 ),
+                                child: ElevatedButton(
+                                  onPressed: _isNavigating
+                                      ? null
+                                      : () {
+                                    setState(() {
+                                      _isJoining = true;
+                                    });
+                                    _handleResponse('going', event);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _isJoining ? AppColors.goingButtonColor : Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      side: BorderSide(
+                                        color: _isJoining ? AppColors.goingButtonColor : AppColors.inputOutline,
+                                      ),
+                                    ),
+                                    elevation: 0,
+                                    padding: EdgeInsets.symmetric(vertical: screenWidth * 0.03),
+                                    shadowColor: Colors.transparent,
+                                  ),
                                 child: FittedBox(
                                   fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    'I\'m Joining',
-                                    style: TextStyle(
-                                      fontSize: bodyFontSize,
-                                      fontWeight: FontWeight.w500,
-                                      color: _isJoining ? Colors.white : AppColors.primaryBlue,
-                                      fontFamily: 'Poppins',
-                                    ),
-                                  ),
+                                  child: _isJoinLoading
+                                      ? SizedBox(
+                                          height: bodyFontSize + 4,
+                                          width: bodyFontSize + 4,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              _isJoining ? Colors.white : AppColors.primaryBlue,
+                                            ),
+                                          ),
+                                        )
+                                      : Text(
+                                          'I\'m Joining',
+                                          style: TextStyle(
+                                            fontSize: bodyFontSize,
+                                            fontWeight: FontWeight.w500,
+                                            color: _isJoining ? Colors.white : AppColors.primaryBlue,
+                                            fontFamily: 'Poppins',
+                                          ),
+                                        ),
+                                ),
                                 ),
                               ),
                             ),
                             SizedBox(width: screenWidth * 0.02),
                             Expanded(
-                              child: ElevatedButton(
-                                onPressed: _isNavigating
-                                    ? null
-                                    : () {
-                                  setState(() {
-                                    _isJoining = false;
-                                  });
-                                  _handleResponse('not_going', event);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: !_isJoining ? AppColors.notGoingButtonColor : Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.0),
-                                    side: BorderSide(
-                                      color: !_isJoining ? AppColors.notGoingButtonColor : AppColors.inputOutline,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      spreadRadius: 0,
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
                                     ),
-                                  ),
-                                  elevation: 0,
-                                  padding: EdgeInsets.symmetric(vertical: screenWidth * 0.03),
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.06),
+                                      spreadRadius: 0,
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
                                 ),
+                                child: ElevatedButton(
+                                  onPressed: _isNavigating
+                                      ? null
+                                      : () {
+                                    setState(() {
+                                      _isJoining = false;
+                                    });
+                                    _handleResponse('not_going', event);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: !_isJoining ? AppColors.notGoingButtonColor : Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      side: BorderSide(
+                                        color: !_isJoining ? AppColors.notGoingButtonColor : AppColors.inputOutline,
+                                      ),
+                                    ),
+                                    elevation: 0,
+                                    padding: EdgeInsets.symmetric(vertical: screenWidth * 0.03),
+                                    shadowColor: Colors.transparent,
+                                  ),
                                 child: FittedBox(
                                   fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    'Decline',
-                                    style: TextStyle(
-                                      fontSize: bodyFontSize,
-                                      fontWeight: FontWeight.w500,
-                                      color: !_isJoining ? Colors.white : const Color(0xFFF87171),
-                                      fontFamily: 'Poppins',
-                                    ),
-                                  ),
+                                  child: _isDeclineLoading
+                                      ? SizedBox(
+                                          height: bodyFontSize + 4,
+                                          width: bodyFontSize + 4,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              !_isJoining ? Colors.white : const Color(0xFFF87171),
+                                            ),
+                                          ),
+                                        )
+                                      : Text(
+                                          'Decline',
+                                          style: TextStyle(
+                                            fontSize: bodyFontSize,
+                                            fontWeight: FontWeight.w500,
+                                            color: !_isJoining ? Colors.white : const Color(0xFFF87171),
+                                            fontFamily: 'Poppins',
+                                          ),
+                                        ),
+                                ),
                                 ),
                               ),
                             ),
@@ -802,21 +872,15 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
 
       if (response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ride request sent: ${responseData['status_display']}')),
-        );
+        SnackbarUtils.showSuccess(context, 'Ride request sent: ${responseData['status_display']}');
       } else {
         final errorData = jsonDecode(response.body);
         final errorMessage = errorData['detail'] ?? response.body;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send request: $errorMessage')),
-        );
+        SnackbarUtils.showError(context, 'Failed to send request: $errorMessage');
       }
     } catch (error) {
       print('Error: $error');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $error')),
-      );
+      SnackbarUtils.showError(context, 'Error: $error');
     }
   }
 

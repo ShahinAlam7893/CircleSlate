@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'package:circleslate/presentation/common_providers/chat_list_provider.dart';
 import 'package:circleslate/presentation/common_providers/server_status_provider.dart';
 import 'package:circleslate/presentation/shared/internet_connection_banner.dart';
 import 'package:circleslate/presentation/shared/no_internet_page.dart';
 import 'package:circleslate/presentation/shared/server_down_banner.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
-import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 
 // Providers
 import 'package:circleslate/presentation/common_providers/auth_provider.dart';
@@ -22,23 +23,39 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => AvailabilityProvider()),
-        ChangeNotifierProxyProvider<AuthProvider, ConversationProvider>(
-          create: (context) => ConversationProvider(
-            Provider.of<AuthProvider>(context, listen: false),
-          ),
-          update: (context, authProvider, conversationProvider) {
-            return conversationProvider!;
-          },
-        ),
-        ChangeNotifierProvider(create: (_) => UserEventsProvider()),
-        ChangeNotifierProvider(create: (_) => InternetProvider()),
-        ChangeNotifierProvider(create: (_) => ServerStatusProvider()),
-      ],
-      child: const MyApp(),
+    ScreenUtilInit(
+      designSize: const Size(375, 812),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => AuthProvider()),
+            ChangeNotifierProvider(create: (_) => AvailabilityProvider()),
+            ChangeNotifierProxyProvider<AuthProvider, ConversationProvider>(
+              create: (context) => ConversationProvider(
+                Provider.of<AuthProvider>(context, listen: false),
+              ),
+              update: (context, authProvider, conversationProvider) {
+                return conversationProvider!;
+              },
+            ),
+            ChangeNotifierProvider(create: (_) => UserEventsProvider()),
+            ChangeNotifierProvider(create: (_) => InternetProvider()),
+            ChangeNotifierProvider(create: (_) => ServerStatusProvider()),
+            ChangeNotifierProvider(create: (_) => ChatListProvider()),
+            ChangeNotifierProxyProvider<AuthProvider, ConversationProvider>(
+              create: (context) => ConversationProvider(
+                Provider.of<AuthProvider>(context, listen: false),
+              ),
+              update: (context, authProvider, conversationProvider) {
+                return conversationProvider!;
+              },
+            ),
+          ],
+          child: const MyApp(),
+        );
+      },
     ),
   );
 }
@@ -116,7 +133,7 @@ class _InternetAwareWrapperState extends State<InternetAwareWrapper> {
     final isConnected = context.watch<InternetProvider>().isConnected;
 
     if (!isConnected) {
-      return const NoInternetPage();
+      return const InternetConnectionBanner();
     }
 
     return InternetAwareScaffold(

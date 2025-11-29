@@ -9,10 +9,8 @@ import 'package:circleslate/presentation/features/group_management/view/add_memb
 import 'package:circleslate/presentation/features/group_management/view/group_management_page.dart';
 import 'package:circleslate/presentation/features/settings/view/delete_account_screen.dart';
 import 'package:circleslate/presentation/features/settings/view/edit_profile_page.dart';
-import 'package:circleslate/presentation/features/settings/view/privacy_controls_page.dart';
 import 'package:circleslate/presentation/features/settings/view/privacy_policy_page.dart';
-import 'package:circleslate/presentation/features/settings/view/profile_page.dart'
-    hide EditProfilePage;
+import 'package:circleslate/presentation/features/settings/view/profile_page.dart';
 import 'package:circleslate/presentation/features/settings/view/terms_and_conditions_page.dart';
 import 'package:circleslate/presentation/widgets/custom_bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
@@ -267,7 +265,6 @@ class AppRouter {
             chatPartnerId: chatPartnerId,
             conversationId: extraData?['conversationId'] ?? '',
             chatPartnerImageUrl: extraData?['chatPartnerImageUrl'] ?? '',
-            isadmin: extraData?['isCurrentUserAdminInGroup'] ?? false,
           );
         },
       ),
@@ -303,7 +300,8 @@ class AppRouter {
             role: extra['role'] ?? '',
             groupId: extra['groupId'] ?? '',
             currentUserId: extra['currentUserId'] ?? '',
-            isCurrentUserAdmin: extra['isCurrentUserAdmin'] ?? false,
+            // isCurrentUserAdmin: extra['isCurrentUserAdmin'] ?? false,
+            isCurrentUserAdminInGroup: extra['isCurrentUserAdminInGroup'],
             conversationId: extra['conversationId'] ?? '',
           );
         },
@@ -323,14 +321,12 @@ class AppRouter {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           final currentUserId = extra['currentUserId'] ?? '';
           final conversationId = extra['conversationId'] ?? '';
-          final isGroupChat = extra['isGroupChat'] ?? true;
-          final isCurrentUserAdminInGroup =
-              extra['isCurrentUserAdminInGroup'] ?? true;
 
           return GroupConversationPage(
             groupId: conversationId,
             currentUserId: currentUserId,
             groupName: extra['groupName'] ?? '',
+            isCurrentUserAdminInGroup: extra['isCurrentUserAdminInGroup'] ?? '',
           );
         },
       ),

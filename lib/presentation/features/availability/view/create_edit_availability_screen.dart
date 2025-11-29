@@ -1,4 +1,5 @@
 import 'package:circleslate/core/constants/app_colors.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/presentation/common_providers/availability_provider.dart';
 import 'package:circleslate/presentation/routes/app_router.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,8 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
   int _selectedDayIndex = 0;
   int _selectedTimeSlotIndex = -1;
   int _selectedRepeatOption = 0;
+  bool _isCancelLoading = false;
+  bool _isSaveLoading = false;
 
   List<Map<String, String>> _generateCurrentWeekDays() {
     final now = DateTime.now();
@@ -127,42 +130,36 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
               ),
             ),
             const SizedBox(height: 16.0),
-            // We need to ensure the status cards also adapt to smaller screens
-            // Use Flexible or Expanded for status cards if they overflow
+            // Status cards with professional spacing for two cards
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Flexible(
-                  // Use Flexible for each status card
-                  child: _buildStatusCard(
-                    status: 1,
-                    title: 'Available',
-                    subtitle: 'for playdates',
-                    icon: Icons.check_circle,
-                    iconColor: const Color(0xFF36D399),
-                    borderColor: const Color(0xFF36D399),
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    margin: EdgeInsets.only(right: screenWidth * 0.04),
+                    child: _buildStatusCard(
+                      status: 1,
+                      title: 'Available',
+                      subtitle: 'for playdates',
+                      icon: Icons.check_circle,
+                      iconColor: const Color(0xFF36D399),
+                      borderColor: const Color(0xFF36D399),
+                    ),
                   ),
                 ),
-                SizedBox(width: screenWidth * 0.02), // Small responsive gap
-                Flexible(
-                  child: _buildStatusCard(
-                    status: 0,
-                    title: 'Busy',
-                    subtitle: 'not available',
-                    icon: Icons.event_busy,
-                    iconColor: AppColors.unavailableRed,
-                    borderColor: const Color(0x14F87171),
-                  ),
-                ),
-                SizedBox(width: screenWidth * 0.02), // Small responsive gap
-                Flexible(
-                  child: _buildStatusCard(
-                    status: 2,
-                    title: 'Maybe',
-                    subtitle: 'available',
-                    icon: Icons.help_outline,
-                    iconColor: const Color(0xFFFFE082),
-                    borderColor: const Color(0x14FFE082),
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    margin: EdgeInsets.only(left: screenWidth * 0.04),
+                    child: _buildStatusCard(
+                      status: 0,
+                      title: 'Busy',
+                      subtitle: 'not available',
+                      icon: Icons.event_busy,
+                      iconColor: AppColors.unavailableRed,
+                      borderColor: const Color(0x14F87171),
+                    ),
                   ),
                 ),
               ],
@@ -238,97 +235,199 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {
-                      context.pop();
+                    onPressed: _isCancelLoading || _isSaveLoading ? null : () async {
+                      setState(() {
+                        _isCancelLoading = true;
+                      });
+                      
+                      try {
+                        // Add a small delay to show the loading state
+                        await Future.delayed(const Duration(milliseconds: 300));
+                        context.pop();
+                      } finally {
+                        if (mounted) {
+                          setState(() {
+                            _isCancelLoading = false;
+                          });
+                        }
+                      }
                     },
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.primaryBlue),
+                      side: BorderSide(
+                        color: _isCancelLoading || _isSaveLoading 
+                            ? Colors.grey.shade400 
+                            : AppColors.primaryBlue
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 16.0),
                     ),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(
-                        color: AppColors.primaryBlue,
-                        fontSize: 14.0,
-                      ),
-                    ),
+                    child: _isCancelLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryBlue),
+                            ),
+                          )
+                        : const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: AppColors.primaryBlue,
+                              fontSize: 14.0,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 16.0),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () async {
-                      final provider = Provider.of<AvailabilityProvider>(
-                        context,
-                        listen: false,
-                      );
+                    onPressed: _isCancelLoading || _isSaveLoading ? null : () async {
+                      setState(() {
+                        _isSaveLoading = true;
+                      });
 
-                      final now = DateTime.now();
-                      final year = now.year;
-                      final month = now.month.toString().padLeft(2, '0');
-                      String selectedDay = padDay(_days[_selectedDayIndex]["date"]!);
-                      String startDate = "$year-$month-$selectedDay";
-
-                      // Calculate end_date based on repeat option
-                      String endDate;
-                      final startDateObj = DateTime(year, int.parse(month), int.parse(selectedDay));
-
-                      if (_selectedRepeatOption == 0) {
-                        // Just this once - same as start date
-                        endDate = startDate;
-                      } else if (_selectedRepeatOption == 1) {
-                        // Repeat weekly - extend for 12 weeks (3 months)
-                        final endDateObj = startDateObj.add(Duration(days: 7 * 12));
-                        endDate = "${endDateObj.year}-${endDateObj.month.toString().padLeft(2, '0')}-${endDateObj.day.toString().padLeft(2, '0')}";
-                      } else if (_selectedRepeatOption == 2) {
-                        // Repeat monthly - extend for 12 months (1 year)
-                        final endDateObj = DateTime(
-                          startDateObj.year + 1,
-                          startDateObj.month,
-                          startDateObj.day,
+                      try {
+                        final provider = Provider.of<AvailabilityProvider>(
+                          context,
+                          listen: false,
                         );
-                        endDate = "${endDateObj.year}-${endDateObj.month.toString().padLeft(2, '0')}-${endDateObj.day.toString().padLeft(2, '0')}";
-                      } else {
-                        endDate = startDate;
-                      }
 
-                      // 🚀 Call API
-                      bool success = await provider.saveAvailabilityToAPI(
-                        selectedStatus: _selectedStatus,
-                        selectedTimeSlotIndex: _selectedTimeSlotIndex,
-                        selectedRepeatOption: _selectedRepeatOption,
-                        startDate: startDate,
-                        endDate: endDate,
-                        notes: null,
-                      );
+                        final now = DateTime.now();
+                        final year = now.year;
+                        final month = now.month.toString().padLeft(2, '0');
+                        String selectedDay = padDay(_days[_selectedDayIndex]["date"]!);
+                        String startDate = "$year-$month-$selectedDay";
 
-                      if (success) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Availability Saved!')),
+                        // Calculate end_date based on repeat option
+                        String endDate;
+                        final startDateObj = DateTime(year, int.parse(month), int.parse(selectedDay));
+
+                        if (_selectedRepeatOption == 0) {
+                          // Just this once - same as start date
+                          endDate = startDate;
+                        } else if (_selectedRepeatOption == 1) {
+                          // Repeat weekly - extend for 12 weeks (3 months)
+                          final endDateObj = startDateObj.add(Duration(days: 7 * 12));
+                          endDate = "${endDateObj.year}-${endDateObj.month.toString().padLeft(2, '0')}-${endDateObj.day.toString().padLeft(2, '0')}";
+                        } else if (_selectedRepeatOption == 2) {
+                          // Repeat monthly - extend for 12 months (1 year)
+                          final endDateObj = DateTime(
+                            startDateObj.year + 1,
+                            startDateObj.month,
+                            startDateObj.day,
+                          );
+                          endDate = "${endDateObj.year}-${endDateObj.month.toString().padLeft(2, '0')}-${endDateObj.day.toString().padLeft(2, '0')}";
+                        } else {
+                          endDate = startDate;
+                        }
+
+                        // Helper function to map repeat option to API value
+                        String getRepeatScheduleValue(int option) {
+                          switch (option) {
+                            case 0:
+                              return "once";
+                            case 1:
+                              return "weekly";
+                            case 2:
+                              return "monthly";
+                            default:
+                              return "once";
+                          }
+                        }
+
+                        // 📝 Log API Request Data
+                        final requestData = {
+                          'selectedStatus': _selectedStatus,
+                          'selectedTimeSlot': _timeSlots[_selectedTimeSlotIndex],
+                          'selectedTimeSlotIndex': _selectedTimeSlotIndex,
+                          'selectedRepeatOption': _selectedRepeatOption,
+                          'repeatOptionText': _selectedRepeatOption == 0 
+                              ? 'Just this once' 
+                              : _selectedRepeatOption == 1 
+                                  ? 'Repeat weekly' 
+                                  : 'Repeat monthly',
+                          'repeatScheduleValue': getRepeatScheduleValue(_selectedRepeatOption),
+                          'startDate': startDate,
+                          'endDate': endDate,
+                          'selectedDay': _days[_selectedDayIndex],
+                          'notes': null,
+                        };
+                        
+                        print('🚀 API CALL - Save Availability Request Data:');
+                        print('═══════════════════════════════════════════════');
+                        print('🌐 API Endpoint: https://app.circleslate.com/api/calendar/availability/');
+                        print('📋 Method: POST');
+                        print('📊 Request Data:');
+                        print('  Status: ${requestData['selectedStatus']}');
+                        print('  Time Slot: ${requestData['selectedTimeSlot']}');
+                        print('  Time Slot Index: ${requestData['selectedTimeSlotIndex']}');
+                        print('  Repeat Option: ${requestData['repeatOptionText']} (${requestData['selectedRepeatOption']})');
+                        print('  🔄 repeat_schedule: "${requestData['repeatScheduleValue']}"');
+                        print('  Start Date: ${requestData['startDate']}');
+                        print('  End Date: ${requestData['endDate']}');
+                        print('  Selected Day: ${requestData['selectedDay']}');
+                        print('  Notes: ${requestData['notes']}');
+                        print('═══════════════════════════════════════════════');
+
+                        // 🚀 Call API
+                        bool success = await provider.saveAvailabilityToAPI(
+                          selectedStatus: _selectedStatus,
+                          selectedTimeSlotIndex: _selectedTimeSlotIndex,
+                          selectedRepeatOption: _selectedRepeatOption,
+                          startDate: startDate,
+                          endDate: endDate,
+                          notes: null,
                         );
-                        context.pushNamed(AppRoutes.home);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Failed to save availability'),
-                          ),
-                        );
+
+                        // 📝 Log API Response
+                        print('📥 API RESPONSE - Save Availability:');
+                        print('═══════════════════════════════════════════════');
+                        print('🌐 API Endpoint: https://app.circleslate.com/api/calendar/availability/');
+                        print('📋 Method: POST');
+                        print('✅ Success: $success');
+                        print('⏰ Response Time: ${DateTime.now().toIso8601String()}');
+                        print('📊 Status: ${success ? 'API call completed successfully' : 'API call failed'}');
+                        print('═══════════════════════════════════════════════');
+
+                        if (success) {
+                          SnackbarUtils.showSuccess(context, 'Availability Saved!');
+                          context.pushNamed(AppRoutes.home);
+                        } else {
+                          SnackbarUtils.showError(context, 'Failed to save availability');
+                        }
+                      } finally {
+                        if (mounted) {
+                          setState(() {
+                            _isSaveLoading = false;
+                          });
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
+                      backgroundColor: _isCancelLoading || _isSaveLoading 
+                          ? Colors.grey.shade400 
+                          : AppColors.primaryBlue,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 16.0),
                     ),
-                    child: const Text(
-                      'Save',
-                      style: TextStyle(color: Colors.white, fontSize: 14.0),
-                    ),
+                    child: _isSaveLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            'Save',
+                            style: TextStyle(color: Colors.white, fontSize: 14.0),
+                          ),
                   ),
                 ),
               ],
@@ -343,7 +442,7 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
     return day.length == 1 ? '0$day' : day;
   }
 
-  // ⬇️ STATUS CARD (Added responsive width to inner Container)
+  // ⬇️ STATUS CARD (Optimized for two-card professional layout)
   Widget _buildStatusCard({
     required int status,
     required String title,
@@ -360,36 +459,36 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
         });
       },
       child: Container(
-        // Removed fixed width: 100
         padding: const EdgeInsets.symmetric(
-          vertical: 16.0,
-          horizontal: 4.0,
-        ), // Reduced horizontal padding
+          vertical: 20.0,
+          horizontal: 16.0,
+        ), // Increased padding for better appearance
         decoration: BoxDecoration(
           color: isSelected ? borderColor.withOpacity(0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: BorderRadius.circular(16.0), // Increased border radius
           border: Border.all(
             color: isSelected ? borderColor : Colors.grey.shade300,
             width: isSelected ? 2.0 : 1.0,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: borderColor.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
+          boxShadow: [
+            BoxShadow(
+              color: isSelected 
+                  ? borderColor.withOpacity(0.3)
+                  : Colors.grey.withOpacity(0.1),
+              blurRadius: isSelected ? 12 : 6,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: iconColor, size: 26), // Reduced icon size
-            const SizedBox(height: 6.0), // Reduced spacing
+            Icon(icon, color: iconColor, size: 32), // Increased icon size
+            const SizedBox(height: 12.0), // Increased spacing
             Text(
               title,
               style: TextStyle(
-                fontSize: 13.0, // Reduced font size
+                fontSize: 16.0, // Increased font size
                 fontWeight: FontWeight.bold,
                 color: isSelected ? iconColor : AppColors.textColorPrimary,
               ),
@@ -397,15 +496,16 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            const SizedBox(height: 4.0),
             Text(
               subtitle,
               style: const TextStyle(
-                fontSize: 10.0, // Reduced font size
+                fontSize: 12.0, // Increased font size
                 fontWeight: FontWeight.w500,
                 color: Color(0xCC1B1D2A),
               ),
               textAlign: TextAlign.center,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ],

@@ -116,7 +116,7 @@ class ConversationProvider extends ChangeNotifier {
   String? _getid() {
     if (_conversations.isNotEmpty) {
       final firstId = _conversations.first.id;
-      if (firstId != null && firstId.isNotEmpty && firstId != 'string') {
+      if (firstId.isNotEmpty && firstId != 'string') {
         return firstId;
       }
     }

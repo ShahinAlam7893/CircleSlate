@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/network/endpoints.dart';
 
 class AvailabilityProvider extends ChangeNotifier {
-  static const String _apiUrl = "${Urls.baseUrl}/calendar/availability/";
+  static const String _apiUrl = Urls.calendarAvailability;
 
   // -------------------- Caching Strategy --------------------
   static const Duration _cacheExpiration = Duration(minutes: 5);
@@ -321,9 +321,9 @@ class AvailabilityProvider extends ChangeNotifier {
 
       String url;
       if (selectedUserId != null) {
-        url = "${Urls.baseUrl}/calendar/user-day-availability/$selectedUserId/?date=$dateString";
+        url = "${Urls.userDayAvailability}$selectedUserId/?date=$dateString";
       } else {
-        url = "${Urls.baseUrl}/calendar/day/?date=$dateString";
+        url = "${Urls.dayAvailability}?date=$dateString";
       }
 
       final response = await http.get(Uri.parse(url), headers: headers);
@@ -485,7 +485,7 @@ class AvailabilityProvider extends ChangeNotifier {
       };
 
       final response = await http.get(
-        Uri.parse("${Urls.baseUrl}/calendar/availability/?user_id=$userId"),
+        Uri.parse("${Urls.userCalendarAvailability}?user_id=$userId"),
         headers: headers,
       );
 
@@ -626,7 +626,7 @@ class AvailabilityProvider extends ChangeNotifier {
       } else {
         // For own user: Fetch all availability records once and cache them
         if (!_userAvailabilityCache.containsKey(userId) || forceRefresh) {
-          final availUrl = "${Urls.baseUrl}/calendar/availability/";
+          final availUrl = Urls.calendarAvailability;
           print('🌐 Fetching all availability records from: $availUrl');
 
           final availResponse = await http.get(Uri.parse(availUrl), headers: headers);

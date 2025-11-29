@@ -9,7 +9,7 @@ class EventService {
 
   static Future<void> sendResponse(String eventId, String responseType) async {
     final token = await _getToken(); // Get the token
-    final url = Uri.parse('$baseUrl/event/events/$eventId/respond/');
+    final url = Uri.parse('${Urls.respondToEvent}$eventId/respond/');
 
     print('Sending response for event ID: $eventId');
     print('URL: $url');
@@ -54,11 +54,11 @@ class EventService {
       print("❌ No token found.");
       return [];
     }
-    final urls = Urls.fatch_upcoming_events;
+    final urls = Urls.fetchUpcomingEvents;
 
     print("🌐 Making GET request to ${urls}");
     final response = await http.get(
-      Uri.parse(Urls.fatch_upcoming_events),
+      Uri.parse(Urls.fetchUpcomingEvents),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -96,7 +96,7 @@ class EventService {
       throw Exception("No token found");
     }
 
-    final eventUrl = "$baseUrl/event/events/$eventId/";
+    final eventUrl = "${Urls.eventDetails}$eventId/";
     print("🌐 Making GET request to $eventUrl");
 
     final response = await http.get(
@@ -134,7 +134,7 @@ class EventService {
       throw Exception("No token found");
     }
 
-    final url = Uri.parse('$baseUrl/event/events/');
+    final url = Uri.parse(Urls.fetchUpcomingEvents);
     print("🌐 Making GET request to $url");
 
     final response = await http.get(

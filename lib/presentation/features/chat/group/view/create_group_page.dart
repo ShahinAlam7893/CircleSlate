@@ -6,6 +6,7 @@ import 'package:circleslate/core/constants/app_colors.dart';
 import 'package:circleslate/core/services/group/group_conversation_manager.dart';
 import 'package:circleslate/core/services/user_search_service.dart';
 import 'package:circleslate/data/models/user_search_result_model.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 
 
 class CreateGroupPage extends StatefulWidget {
@@ -79,24 +80,18 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   Future<void> _createGroup() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedUsers.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select at least one member for the group.')),
-        );
+        SnackbarUtils.showWarning(context, 'Please select at least one member for the group.');
         return;
       }
 
       if (widget.currentUserId.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User ID is missing. Please log in again.')),
-        );
+        SnackbarUtils.showError(context, 'User ID is missing. Please log in again.');
         return;
       }
-
       setState(() {
         _isLoading = true;
         _errorMessage = null;
       });
-
       try {
         final groupName = _groupNameController.text.trim();
         final participantIds = _selectedUsers.map((user) => user.id.toString()).toList();
@@ -125,11 +120,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
         if (mounted) {
           setState(() {
             _isLoading = false;
-            // _errorMessage = 'Failed to create group: $e';
           });
-          // ScaffoldMessenger.of(context).showSnackBar(
-          //   SnackBar(content: Text('Failed to create group: $e')),
-          // );
         }
       } finally {
         if (mounted) {

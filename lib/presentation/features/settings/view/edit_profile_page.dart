@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../../../common_providers/auth_provider.dart';
 import 'package:circleslate/core/constants/app_colors.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 
 class AuthInputField extends StatefulWidget {
   final TextEditingController controller;
@@ -247,9 +248,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully!'), backgroundColor: Colors.green),
-      );
+      SnackbarUtils.showSuccess(context, 'Profile updated successfully!');
       context.pop();
     } catch (e) {
       _showError('Error updating profile: $e');
@@ -260,9 +259,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   void _showError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
-    );
+    SnackbarUtils.showError(context, msg);
   }
 
   @override
@@ -329,7 +326,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               // Mobile
               const Text('Mobile', style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.w500, color: AppColors.textColorPrimary)),
               const SizedBox(height: 8.0),
-              AuthInputField(controller: _mobileController, labelText: '', hintText: 'Mobile', keyboardType: TextInputType.phone, validator: (v) => v == null || v.isEmpty ? 'Enter mobile' : null),
+              AuthInputField(controller: _mobileController, labelText: '', hintText: 'Mobile (Optional)', keyboardType: TextInputType.phone),
               const SizedBox(height: 20.0),
 
               // Children Section

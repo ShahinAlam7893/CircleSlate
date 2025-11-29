@@ -1,3 +1,4 @@
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/presentation/features/event_management/controllers/eventManagementControllers.dart';
 import 'package:circleslate/presentation/features/event_management/models/eventsModels.dart';
 import 'package:circleslate/presentation/routes/app_router.dart';
@@ -281,9 +282,7 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
                 height: 32.0,
                 child: ElevatedButton(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Loading more events...')),
-                    );
+                    SnackbarUtils.showInfo(context, 'Loading more events...');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,

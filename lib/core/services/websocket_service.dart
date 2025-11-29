@@ -1,10 +1,10 @@
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
+import '../network/endpoints.dart';
 
 class ChatSocketService {
   WebSocketChannel? _channel;
@@ -47,7 +47,7 @@ class ChatSocketService {
         throw Exception('Authentication token not found');
       }
 
-      final wsUrl = 'ws://app.circleslate.com/ws/chat/$_conversationId/?token=$_token';
+      final wsUrl = '${Urls.chatWebSocket}$_conversationId/?token=$_token';
       debugPrint('[ChatSocketService] Connecting to WebSocket: $wsUrl');
 
       if (_channel != null) {
@@ -60,7 +60,7 @@ class ChatSocketService {
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
 
       _channel!.stream.listen(
-            (data) => _handleMessage(data),
+        (data) => _handleMessage(data),
         onDone: _handleDisconnection,
         onError: _handleConnectionError,
         cancelOnError: false,
@@ -89,7 +89,9 @@ class ChatSocketService {
         if (!_messagesController.isClosed) {
           _messagesController.add(text);
         } else {
-          debugPrint('[ChatSocketService] Messages controller closed, cannot forward: $text');
+          debugPrint(
+            '[ChatSocketService] Messages controller closed, cannot forward: $text',
+          );
         }
       }
     } catch (e) {
@@ -134,7 +136,9 @@ class ChatSocketService {
   }
 
   void _handleDisconnection() {
-    debugPrint('[ChatSocketService] WebSocket disconnected, closeCode: ${_channel?.closeCode}');
+    debugPrint(
+      '[ChatSocketService] WebSocket disconnected, closeCode: ${_channel?.closeCode}',
+    );
     _isConnected = false;
     if (!_connectionStatusController.isClosed) {
       _connectionStatusController.add(false);
@@ -161,20 +165,28 @@ class ChatSocketService {
   void _scheduleReconnect() {
     _reconnectAttempts++;
     final delay = Duration(seconds: _reconnectAttempts * 2);
-    debugPrint('[ChatSocketService] Scheduling reconnect attempt $_reconnectAttempts after ${delay.inSeconds}s');
+    debugPrint(
+      '[ChatSocketService] Scheduling reconnect attempt $_reconnectAttempts after ${delay.inSeconds}s',
+    );
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(delay, () async {
       if (_conversationId != null) await _establishConnection();
     });
   }
 
-  void sendMessage(String content, String receiverId, [String? clientMessageId]) {
+  void sendMessage(
+    String content,
+    String receiverId, [
+    String? clientMessageId,
+  ]) {
     if (!isConnected) {
       debugPrint('❌ [ChatSocketService] Cannot send - socket not connected');
       return;
     }
     if (content.isEmpty || receiverId.isEmpty) {
-      debugPrint('❌ [ChatSocketService] Cannot send - empty content or receiver');
+      debugPrint(
+        '❌ [ChatSocketService] Cannot send - empty content or receiver',
+      );
       return;
     }
 
@@ -209,9 +221,15 @@ class ChatSocketService {
     }
   }
 
-  void sendTypingIndicator(String receiverId, bool isTyping, {required bool isGroup}) {
+  void sendTypingIndicator(
+    String receiverId,
+    bool isTyping, {
+    required bool isGroup,
+  }) {
     if (!isConnected || receiverId.isEmpty) {
-      debugPrint('[ChatSocketService] Cannot send typing indicator, socket not connected or invalid receiver');
+      debugPrint(
+        '[ChatSocketService] Cannot send typing indicator, socket not connected or invalid receiver',
+      );
       return;
     }
 
@@ -233,7 +251,9 @@ class ChatSocketService {
 
   void markAsRead(List<String> messageIds) {
     if (!isConnected || messageIds.isEmpty) {
-      debugPrint('[ChatSocketService] Cannot mark messages as read, socket not connected or empty message IDs');
+      debugPrint(
+        '[ChatSocketService] Cannot mark messages as read, socket not connected or empty message IDs',
+      );
       return;
     }
 
@@ -253,7 +273,9 @@ class ChatSocketService {
 
   void sendRawMessage(String message) {
     if (!isConnected) {
-      debugPrint('[ChatSocketService] Cannot send raw message, socket not connected');
+      debugPrint(
+        '[ChatSocketService] Cannot send raw message, socket not connected',
+      );
       return;
     }
 
@@ -266,7 +288,8 @@ class ChatSocketService {
     }
   }
 
-  bool get isConnected => _isConnected && _channel != null && (_channel!.closeCode == null);
+  bool get isConnected =>
+      _isConnected && _channel != null && (_channel!.closeCode == null);
 
   Future<void> reconnect() async {
     if (_conversationId != null) {

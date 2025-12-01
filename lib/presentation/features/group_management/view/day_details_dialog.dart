@@ -34,6 +34,7 @@ class DayDetailsDialog extends StatelessWidget {
     final formattedDate = DateFormat('EEEE, MMMM d, yyyy').format(parsedDate);
 
     return AlertDialog(
+      backgroundColor: Colors.white,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -160,7 +161,7 @@ class DayDetailsDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: const Text('Close', style: TextStyle(color: Colors.black),),
         ),
       ],
     );

@@ -26,11 +26,11 @@ class OtpVerificationPage extends StatefulWidget {
 class _OtpVerificationPageState extends State<OtpVerificationPage> {
   final List<TextEditingController> _otpControllers = List.generate(
     4,
-        (index) => TextEditingController(),
+    (index) => TextEditingController(),
   );
   final List<FocusNode> _otpFocusNodes = List.generate(
     4,
-        (index) => FocusNode(),
+    (index) => FocusNode(),
   );
 
   Timer? _resendTimer;
@@ -66,7 +66,6 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
     }
   }
 
-
   void showInfoDialog(BuildContext context, String title, String message) {
     showDialog(
       context: context,
@@ -96,14 +95,13 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
     if (mounted) {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Verification email resent successfully!')),
+          const SnackBar(
+            content: Text('Verification email resent successfully!'),
+          ),
         );
         _startResendTimer(); // Restart the timer
       } else {
         showInfoDialog(context, "Error", "Failed to resend email.");
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   SnackBar(content: Text('Failed to resend email.')),
-        // );
       }
       setState(() {
         _isResending = false;
@@ -116,9 +114,6 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
     String otp = _otpControllers.map((c) => c.text).join();
     if (otp.length != 4) {
       showInfoDialog(context, "Error", "Please enter a 4-digit OTP");
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(content: Text('Please enter a 4-digit OTP')),
-      // );
       return;
     }
 
@@ -127,7 +122,6 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
     });
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    // Corrected the call to verifyOtp to match the expected signature
     final success = await authProvider.verifyOtp(otp);
 
     if (mounted) {
@@ -138,9 +132,6 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
         context.pushNamed(RoutePaths.ForgotPasswordResetPage);
       } else {
         showInfoDialog(context, "Failed", "OTP verification failed.");
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   SnackBar(content: Text('OTP verification failed.')),
-        // );
       }
     }
   }
@@ -258,15 +249,24 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                           fillColor: AppColors.otpInputFill,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10.0),
-                            borderSide: const BorderSide(color: AppColors.inputOutline, width: 1),
+                            borderSide: const BorderSide(
+                              color: AppColors.inputOutline,
+                              width: 1,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10.0),
-                            borderSide: const BorderSide(color: AppColors.inputOutline, width: 1),
+                            borderSide: const BorderSide(
+                              color: AppColors.inputOutline,
+                              width: 1,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10.0),
-                            borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
+                            borderSide: const BorderSide(
+                              color: AppColors.primaryBlue,
+                              width: 1.5,
+                            ),
                           ),
                         ),
                         onChanged: (value) {
@@ -300,13 +300,13 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                   child: _isVerifying
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
-                    'Verify',
-                    style: TextStyle(
-                      fontSize: 14.0,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                          'Verify',
+                          style: TextStyle(
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 20.0),
@@ -320,19 +320,26 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                     style: TextStyle(fontSize: 15.0, color: Colors.grey),
                   ),
                   GestureDetector(
-                    onTap: _canResend && !_isResending ? _handleResendEmail : null,
+                    onTap: _canResend && !_isResending
+                        ? _handleResendEmail
+                        : null,
                     child: _isResending
-                        ? const CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryBlue)
+                        ? const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primaryBlue,
+                          )
                         : Text(
-                      _canResend
-                          ? 'Resend'
-                          : '00:${_resendSeconds.toString().padLeft(2, '0')}',
-                      style: TextStyle(
-                        fontSize: 15.0,
-                        fontWeight: FontWeight.w500,
-                        color: _canResend ? AppColors.primaryBlue : Colors.red,
-                      ),
-                    ),
+                            _canResend
+                                ? 'Resend'
+                                : '00:${_resendSeconds.toString().padLeft(2, '0')}',
+                            style: TextStyle(
+                              fontSize: 15.0,
+                              fontWeight: FontWeight.w500,
+                              color: _canResend
+                                  ? AppColors.primaryBlue
+                                  : Colors.red,
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -343,5 +350,4 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       ),
     );
   }
-
 }

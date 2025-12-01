@@ -116,7 +116,7 @@
 // //       return 0;
 // //     }
 // //
-// //     final url = Uri.parse('${Urls.baseUrl}/chat/notifications/unread-count/');
+// //     final url = Uri.parse(Urls.unreadNotificationCount);
 // //     print('🌐 Sending request to: $url');
 // //
 // //     final response = await http.get(
@@ -210,7 +210,7 @@
 // }
 //
 // class NotificationService {
-//   final String _baseUrl = 'http://72.60.26.57/api/chat/notifications/';
+//   final String _baseUrl = 'https://app.circleslate.com/api/chat/notifications/';
 //
 //   /// Fetch notifications from API
 //   Future<List<AppNotification>> fetchNotifications({int limit = 5101}) async {
@@ -273,7 +273,7 @@
 //       return 0;
 //     }
 //
-//     final url = Uri.parse('${Urls.baseUrl}/chat/notifications/unread-count/');
+//     final url = Uri.parse(Urls.unreadNotificationCount);
 //     print('🌐 Sending request to: $url');
 //
 //     final response = await http.get(
@@ -299,7 +299,6 @@
 //     }
 //   }
 // }
-
 
 //
 //
@@ -449,8 +448,6 @@
 //
 // }
 
-
-
 // lib/core/services/notification_service.dart
 import 'dart:convert';
 import 'package:circleslate/core/network/endpoints.dart';
@@ -484,7 +481,6 @@ class AppNotification {
     required this.timestamp,
   });
 
-
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
       id: json['id'],
@@ -502,9 +498,8 @@ class AppNotification {
   }
 }
 
-
 class NotificationService {
-  final String _baseUrl = '${Urls.baseUrl}/chat/notifications/';
+  final String _baseUrl = Urls.notifications;
 
   /// Fetch notifications from API
   Future<List<AppNotification>> fetchNotifications({int limit = 5101}) async {
@@ -517,9 +512,7 @@ class NotificationService {
 
     final response = await http.get(
       Uri.parse('$_baseUrl?limit=$limit'),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
+      headers: {'Authorization': 'Bearer $token'},
     );
 
     if (response.statusCode == 200) {
@@ -530,7 +523,8 @@ class NotificationService {
           .toList();
     } else {
       throw Exception(
-          'Failed to fetch notifications: ${response.statusCode} ${response.body}');
+        'Failed to fetch notifications: ${response.statusCode} ${response.body}',
+      );
     }
   }
 
@@ -545,14 +539,13 @@ class NotificationService {
 
     final response = await http.post(
       Uri.parse('$_baseUrl$notificationId/read/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
+      headers: {'Authorization': 'Bearer $token'},
     );
 
     if (response.statusCode != 200) {
       throw Exception(
-          'Failed to mark notification as read: ${response.statusCode} ${response.body}');
+        'Failed to mark notification as read: ${response.statusCode} ${response.body}',
+      );
     }
   }
 
@@ -567,18 +560,16 @@ class NotificationService {
       return 0;
     }
 
-    final url = Uri.parse('${Urls.baseUrl}/chat/notifications/unread-count/');
+    final url = Uri.parse(Urls.unreadNotificationCount);
     print('🌐 Sending request to: $url');
 
     final response = await http.get(
       url,
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
+      headers: {'Authorization': 'Bearer $token'},
     );
 
-    print('📩 Response Status Code: ${response.statusCode}');
-    print('📩 Response Body: ${response.body}');
+    // print('📩 Response Status Code: ${response.statusCode}');
+    // print('📩 Response Body: ${response.body}');
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);

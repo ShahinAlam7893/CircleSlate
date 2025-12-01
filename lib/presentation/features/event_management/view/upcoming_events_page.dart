@@ -1,11 +1,11 @@
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/presentation/features/event_management/controllers/eventManagementControllers.dart';
 import 'package:circleslate/presentation/features/event_management/models/eventsModels.dart';
 import 'package:circleslate/presentation/routes/app_router.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart'; // Import go_router for navigation
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart'; // Import go_router for navigation
 
-// --- AppColors (Ideally from lib/core/constants/app_colors.dart) ---
-// Defined here for self-containment in Canvas.
 class AppColors {
   static const Color primaryBlue = Color(0xFF4285F4);
   static const Color inputBorderColor = Colors.grey;
@@ -50,6 +50,48 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
     _eventsFuture = EventService.fetchEvents();
   }
 
+  List<Event> _getUpcomingEvents(List<Event> events) {
+    final now = DateTime.now();
+    final dateFormat = DateFormat('yyyy-MM-dd');
+    final timeFormat = DateFormat('HH:mm');
+
+    final upcomingEvents = events.where((event) {
+      try {
+        final eventDate = dateFormat.parse(event.date);
+        final eventTime = timeFormat.parse(event.time);
+        final eventDateTime = DateTime(
+          eventDate.year,
+          eventDate.month,
+          eventDate.day,
+          eventTime.hour,
+          eventTime.minute,
+        );
+        return eventDateTime.isAfter(now);
+      } catch (e) {
+        return false; // Skip invalid events
+      }
+    }).toList();
+
+    upcomingEvents.sort((a, b) {
+      try {
+        final aDate = dateFormat.parse(a.date);
+        final aTime = timeFormat.parse(a.time);
+        final aDateTime = DateTime(aDate.year, aDate.month, aDate.day, aTime.hour, aTime.minute);
+
+        final bDate = dateFormat.parse(b.date);
+        final bTime = timeFormat.parse(b.time);
+        final bDateTime = DateTime(bDate.year, bDate.month, bDate.day, bTime.hour, bTime.minute);
+
+        return aDateTime.compareTo(bDateTime);
+      } catch (e) {
+        return 0;
+      }
+    });
+
+    return upcomingEvents;
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,9 +124,8 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
           if (snapshot.hasError) {
             return Center(child: Text("Error: ${snapshot.error}"));
           }
-          final events = snapshot.data ?? [];
 
-          //final itemsToShow = events.length > 4 ? 4 : events.length;
+          final events = _getUpcomingEvents(snapshot.data ?? []);
 
           return Padding(
             padding: const EdgeInsets.all(16.0),
@@ -98,7 +139,8 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
                     },
                   ),
                 ),
-                //if (events.length > 4) _buildViewMoreAndAddButton(context),
+                // If you want "View More" and FAB, uncomment below:
+                // if (events.length > 4) _buildViewMoreAndAddButton(context),
               ],
             ),
           );
@@ -108,7 +150,6 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
   }
 
   Widget _buildEventCard(BuildContext context, Event event) {
-    // Added BuildContext context
     Color statusBackgroundColor;
     Color statusTextColor;
 
@@ -128,7 +169,6 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
         print("Tapped event id: ${event.id}");
         context.push("${RoutePaths.eventDetails}/${event.id}");
       },
-
       child: Card(
         margin: const EdgeInsets.symmetric(vertical: 8.0),
         shape: RoundedRectangleBorder(
@@ -137,7 +177,7 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
         ),
         elevation: 0,
         color: Colors.white,
-        shadowColor: Color(0x14000000), // No shadow for the card itself
+        shadowColor: Color(0x14000000),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -147,7 +187,6 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    // CRITICAL CHANGE: Wrap event.title in Expanded
                     child: Text(
                       event.title,
                       style: const TextStyle(
@@ -156,12 +195,10 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
                         color: AppColors.textDark,
                         fontFamily: 'Poppins',
                       ),
-                      maxLines: 1, // Ensure it doesn't wrap more than one line
-                      overflow:
-                          TextOverflow.ellipsis, // Add ellipsis if it overflows
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // The status container will take its natural size
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8.0,
@@ -179,9 +216,8 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
                         color: statusTextColor,
                         fontFamily: 'Poppins',
                       ),
-                      maxLines: 1, // Ensure status text doesn't wrap
-                      overflow: TextOverflow
-                          .ellipsis, // Add ellipsis if status is unexpectedly long
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -212,13 +248,11 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
   }
 
   Widget _buildInfoRow(IconData icon, String text, {Color? iconColor}) {
-    // You might also need to make this row responsive if the text is very long
     return Row(
       children: [
         Icon(icon, size: 18, color: iconColor),
         const SizedBox(width: 8.0),
         Expanded(
-          // CRITICAL CHANGE: Wrap Text in Expanded here too
           child: Text(
             text,
             style: const TextStyle(
@@ -227,8 +261,8 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
               color: AppColors.textMedium,
               fontFamily: 'Poppins',
             ),
-            maxLines: 1, // Limit to one line
-            overflow: TextOverflow.ellipsis, // Add ellipsis
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -239,36 +273,28 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 40.0),
       child: Row(
-        mainAxisAlignment:
-            MainAxisAlignment.start, // Align to start, Expanded will push
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Expanded(
-            // Expanded to take available space and allow centering
             child: Center(
-              // Center the ElevatedButton within the Expanded space
               child: SizedBox(
-                // Wrap with SizedBox for fixed dimensions
-                width: 72.0, // Set width as requested
-                height: 32.0, // Set height as requested
+                width: 72.0,
+                height: 32.0,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Handle "View More" action - in a real app, this would load more events
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Loading more events...')),
-                    );
+                    SnackbarUtils.showInfo(context, 'Loading more events...');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryBlue,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.0),
                     ),
-                    padding: EdgeInsets
-                        .zero, // Remove default padding if using SizedBox for size
+                    padding: EdgeInsets.zero,
                   ),
                   child: const Text(
                     'View More',
                     style: TextStyle(
-                      fontSize: 10.0, // Keep the requested font size
+                      fontSize: 10.0,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                       fontFamily: 'Poppins',
@@ -278,18 +304,14 @@ class _UpcomingEventsPageState extends State<UpcomingEventsPage> {
               ),
             ),
           ),
-          // const SizedBox(width: 0.0), // Spacing between the centered button and the right-aligned button
           Center(
             child: SizedBox(
-              // This will naturally be on the right after the Expanded
               width: 40,
               height: 40,
               child: FloatingActionButton(
-                heroTag: "addEventFab", // Unique tag for hero animation
+                heroTag: "addEventFab",
                 onPressed: () {
-                  // Navigate to CreateEventPage
                   context.push(RoutePaths.createeventspage);
-                  // context.go(RoutePaths.createeventspage);
                 },
                 backgroundColor: Colors.white,
                 shape: RoundedRectangleBorder(

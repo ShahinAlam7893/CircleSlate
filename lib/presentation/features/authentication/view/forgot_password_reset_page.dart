@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:circleslate/core/constants/app_colors.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/presentation/common_providers/auth_provider.dart';
 import 'package:circleslate/presentation/widgets/auth_input_field.dart';
 
@@ -29,9 +30,7 @@ class _ForgotPasswordResetPageState extends State<ForgotPasswordResetPage> {
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Resetting password...')),
-    );
+    SnackbarUtils.showLoading(context, 'Resetting password...');
 
     final success = await authProvider.resetPassword(
       newPassword: _newPasswordController.text.trim(),
@@ -41,9 +40,7 @@ class _ForgotPasswordResetPageState extends State<ForgotPasswordResetPage> {
     if (success) {
       context.go('/pass_cng_succussful');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Password reset failed.')),
-      );
+      SnackbarUtils.showError(context, 'Password reset failed.');
     }
   }
 

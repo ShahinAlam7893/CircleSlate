@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart'; // Import Provider
 import 'package:circleslate/core/constants/app_colors.dart';
 import 'package:circleslate/core/constants/app_assets.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/presentation/common_providers/auth_provider.dart';
 import 'dart:io'; // Import for File class
 import 'package:image_picker/image_picker.dart'; // Import the image_picker package
@@ -174,9 +175,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
     if (_formKey.currentState!.validate()) {
       // Show loading indicator
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Processing...')),
-      );
+      SnackbarUtils.showLoading(context, 'Processing...');
 
       // Pass the image to the AuthProvider
       final success = await authProvider.registerUser(
@@ -189,22 +188,12 @@ class _SignUpPageState extends State<SignUpPage> {
 
       if (success) {
         // Handle successful registration
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created successfully!'),
-            backgroundColor: AppColors.primaryBlue,
-          ),
-        );
+        SnackbarUtils.showSuccess(context, 'Account created successfully!');
         // Navigate to the home page or a verification page
         context.push('/login');
       } else {
         // Handle failed registration, show the error message from the provider
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Registration failed.'),
-            backgroundColor: Colors.redAccent, // Use a red color for error messages
-          ),
-        );
+        SnackbarUtils.showError(context, authProvider.errorMessage ?? 'Registration failed.');
       }
     }
   }

@@ -6,14 +6,15 @@ import 'package:flutter/foundation.dart';
 import '../../../data/models/conversation_model.dart';
 
 class GroupConversationManager {
-  static const String baseUrl = 'http://72.60.26.57/api/chat';
+  static const String baseUrl = 'https://app.circleslate.com/api/chat';
 
+  // https://app.circleslate.com/api/chat
   /// Create a new group conversation
   static Future<Conversation> createGroupConversation(
-      String currentUserId,
-      List<String> participantIds,
-      String groupName,
-      ) async {
+    String currentUserId,
+    List<String> participantIds,
+    String groupName,
+  ) async {
     if (currentUserId.isEmpty) {
       throw Exception('Current user ID cannot be empty');
     }
@@ -34,7 +35,8 @@ class GroupConversationManager {
       };
 
       debugPrint(
-          '[GroupConversationManager] Creating group with payload: $payload');
+        '[GroupConversationManager] Creating group with payload: $payload',
+      );
 
       final response = await http.post(
         Uri.parse('$baseUrl/conversations/create-group/'),
@@ -47,16 +49,17 @@ class GroupConversationManager {
       );
 
       debugPrint(
-          '[GroupConversationManager] Response status: ${response.statusCode}');
-      debugPrint(
-          '[GroupConversationManager] Response body: ${response.body}');
+        '[GroupConversationManager] Response status: ${response.statusCode}',
+      );
+      debugPrint('[GroupConversationManager] Response body: ${response.body}');
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return Conversation.fromJson(data['conversation']);
       } else {
         throw Exception(
-            'Failed to create group: ${response.statusCode} - ${response.body}');
+          'Failed to create group: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       debugPrint('[GroupConversationManager] Error creating group: $e');

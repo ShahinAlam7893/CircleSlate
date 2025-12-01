@@ -69,8 +69,8 @@ class ConversationProvider extends ChangeNotifier {
     }
 
     final uri = Uri.parse(
-      'ws://72.60.26.57:8000/ws/chat/conversations/?token=$token',
-      // 'http://72.60.26.57/api/chat/conversations/?token=$token',
+      'ws://app.circleslate.com/ws/chat/conversations/?token=$token',
+      // 'https://app.circleslate.com/chat/conversations/?token=$token',
     );
 
     _channel = WebSocketChannel.connect(uri);
@@ -116,7 +116,7 @@ class ConversationProvider extends ChangeNotifier {
   String? _getid() {
     if (_conversations.isNotEmpty) {
       final firstId = _conversations.first.id;
-      if (firstId != null && firstId.isNotEmpty && firstId != 'string') {
+      if (firstId.isNotEmpty && firstId != 'string') {
         return firstId;
       }
     }

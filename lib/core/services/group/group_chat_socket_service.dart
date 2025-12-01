@@ -1,17 +1,24 @@
+// core/services/group/group_chat_socket_service.dart
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/cupertino.dart';
+import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../../data/models/group_model.dart';
+import '../../network/endpoints.dart';
 
 class GroupChatSocketService {
   WebSocketChannel? _channel;
-  final String baseWsUrl = 'ws://72.60.26.57:8000/ws/chat/';
   final Function(Message) onMessageReceived;
   final Function(List<dynamic>)? onConversationMessages;
 
-  final StreamController<bool> _connectionStatusController = StreamController<bool>.broadcast();
+  // New callbacks for edit/delete
+  final Function(String messageId, String newContent)? onMessageEdited;
+  final Function(String messageId)? onMessageDeleted;
+
+  final StreamController<bool> _connectionStatusController =
+      StreamController<bool>.broadcast();
   Timer? _heartbeatTimer;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
@@ -19,19 +26,20 @@ class GroupChatSocketService {
 
   Stream<bool> get connectionStatusStream => _connectionStatusController.stream;
   bool _isConnected = false;
-
   bool get isConnected => _isConnected;
 
   GroupChatSocketService({
     required this.onMessageReceived,
     this.onConversationMessages,
+    this.onMessageEdited,
+    this.onMessageDeleted,
   });
 
   Future<void> connect(String conversationId, String token) async {
     try {
-      final wsUrl = '$baseWsUrl$conversationId/?token=$token';
-      debugPrint('[GroupChatSocketService] Connecting to WebSocket: $wsUrl');
-      debugPrint('conversation ID: $conversationId');
+      final wsUrl = '${Urls.chatWebSocket}$conversationId/?token=$token';
+      debugPrint('[GroupChatSocketService] Connecting to: $wsUrl');
+
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
       _isConnected = true;
       _reconnectAttempts = 0;
@@ -39,79 +47,88 @@ class GroupChatSocketService {
       _startHeartbeat();
 
       _channel!.stream.listen(
-            (data) {
-          try {
-            final message = jsonDecode(data);
-            debugPrint('[GroupChatSocketService] Received message: $message');
-
-            // Handle heartbeat messages
-            if (message['type'] == 'heartbeat') {
-              _handleHeartbeat(message);
-              return;
-            }
-
-            // Handle different message types
-            if (message['type'] == 'message' && message['message'] != null) {
-              // Handle message type with nested message object
-              debugPrint('[GroupChatSocketService] Processing nested message');
-              onMessageReceived(Message.fromJson(message['message']));
-            } else if (message['type'] == 'new_message') {
-              // Handle direct new_message type
-              debugPrint('[GroupChatSocketService] Processing new_message');
-              onMessageReceived(Message.fromJson(message));
-            } else if (message['type'] == 'conversation_messages' && message['messages'] != null) {
-              // Handle conversation_messages type - load multiple messages
-              final messages = message['messages'] as List;
-              debugPrint('[GroupChatSocketService] Loading ${messages.length} conversation messages');
-              if (onConversationMessages != null) {
-                onConversationMessages!(messages);
-              } else {
-                for (var msgData in messages) {
-                  onMessageReceived(Message.fromJson(msgData));
-                }
-              }
-            } else if (message['type'] == 'typing_indicator') {
-              // Handle typing indicator
-              debugPrint('[GroupChatSocketService] Typing indicator: ${message['is_typing']}');
-            } else if (message['type'] == 'mark_as_read') {
-              // Handle mark as read
-              debugPrint('[GroupChatSocketService] Mark as read: ${message['message_ids']}');
-            } else if (message['content'] != null && message['sender_id'] != null) {
-              // Handle direct message format
-              debugPrint('[GroupChatSocketService] Processing direct message format');
-              onMessageReceived(Message.fromJson(message));
-            } else {
-              // Default handling for regular messages
-              debugPrint('[GroupChatSocketService] Processing default message format');
-              onMessageReceived(Message.fromJson(message));
-            }
-          } catch (e) {
-            debugPrint('[GroupChatSocketService] Error parsing message: $e');
-            debugPrint('[GroupChatSocketService] Raw message data: $data');
-          }
+        (data) {
+          _handleIncomingData(data);
         },
         onError: (error) {
           debugPrint('[GroupChatSocketService] WebSocket error: $error');
           _handleDisconnection();
         },
         onDone: () {
-          debugPrint('[GroupChatSocketService] WebSocket connection closed');
+          debugPrint('[GroupChatSocketService] WebSocket closed by server');
           _handleDisconnection();
         },
       );
     } catch (e) {
-      debugPrint('[GroupChatSocketService] Error connecting to WebSocket: $e');
+      debugPrint('[GroupChatSocketService] Connection failed: $e');
       _handleDisconnection();
       rethrow;
     }
   }
 
-  void sendMessage(String conversationId, String senderId, String content, {String? clientMessageId}) {
-    if (_channel == null) {
-      debugPrint('[GroupChatSocketService] WebSocket not connected');
-      return;
+  void _handleIncomingData(dynamic data) {
+    try {
+      final message = jsonDecode(data) as Map<String, dynamic>;
+      debugPrint('[GroupChatSocketService] ← Received: ${message['type']}');
+
+      switch (message['type']) {
+        case 'heartbeat':
+          _handleHeartbeat(message);
+          break;
+
+        case 'message':
+        case 'new_message':
+          final msgData = message['message'] ?? message;
+          onMessageReceived(Message.fromJson(msgData));
+          break;
+
+        case 'conversation_messages':
+          final messages = message['messages'] as List<dynamic>;
+          onConversationMessages?.call(messages);
+          break;
+
+        case 'message_edited':
+        case 'edit_message':
+          final msgId = message['message_id'] ?? message['id'];
+          final newContent = message['content'] ?? message['new_content'];
+          if (msgId != null && newContent != null) {
+            onMessageEdited?.call(msgId.toString(), newContent.toString());
+          }
+          break;
+
+        case 'message_deleted':
+        case 'delete_message':
+          final msgId = message['message_id'] ?? message['id'];
+          if (msgId != null) {
+            onMessageDeleted?.call(msgId.toString());
+          }
+          break;
+
+        case 'typing_indicator':
+          // Optional: handle typing from server
+          break;
+
+        default:
+          // Fallback: try to parse as direct message
+          if (message['content'] != null && message['sender_id'] != null) {
+            onMessageReceived(Message.fromJson(message));
+          }
+          break;
+      }
+    } catch (e, s) {
+      debugPrint('[GroupChatSocketService] Parse error: $e\n$s');
+      debugPrint('[GroupChatSocketService] Raw data: $data');
     }
-    final message = {
+  }
+
+  // Send normal message
+  void sendMessage(
+    String conversationId,
+    String senderId,
+    String content, {
+    String? clientMessageId,
+  }) {
+    final payload = {
       'type': 'message',
       'conversation_id': conversationId,
       'sender_id': senderId,
@@ -119,54 +136,69 @@ class GroupChatSocketService {
       'message_type': 'text',
       if (clientMessageId != null) 'client_message_id': clientMessageId,
     };
+    sendRawMessage(jsonEncode(payload));
+  }
 
-    sendRawMessage(jsonEncode(message));
+  // Send edit message
+  void sendEditMessage(String messageId, String newContent) {
+    final payload = {
+      'type': 'edit_message',
+      'message_id': messageId,
+      'content': newContent,
+    };
+    sendRawMessage(jsonEncode(payload));
+    debugPrint('[GroupChatSocketService] → Edit message: $messageId');
+  }
 
-    debugPrint('[GroupChatSocketService] Sending message: $message');
-    debugPrint('conversation ID: $conversationId');
-
+  // Send delete message
+  void sendDeleteMessage(String messageId) {
+    final payload = {'type': 'delete_message', 'message_id': messageId};
+    sendRawMessage(jsonEncode(payload));
+    debugPrint('[GroupChatSocketService] → Delete message: $messageId');
   }
 
   void sendRawMessage(String message) {
-    if (_channel == null) {
-      debugPrint('[GroupChatSocketService] WebSocket not connected');
+    if (_channel == null || !_isConnected) {
+      debugPrint('[GroupChatSocketService] Cannot send: not connected');
       return;
     }
-    debugPrint('[GroupChatSocketService] Sending raw message: $message');
+    debugPrint('[GroupChatSocketService] → $message');
     _channel!.sink.add(message);
   }
 
   void _startHeartbeat() {
     _heartbeatTimer?.cancel();
     _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (isConnected) _sendHeartbeat();
+      if (_isConnected) _sendHeartbeat();
     });
   }
 
   void _sendHeartbeat() {
     try {
-      final heartbeat = {
-        'type': 'heartbeat',
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-      _channel?.sink.add(jsonEncode(heartbeat));
+      sendRawMessage(
+        jsonEncode({
+          'type': 'heartbeat',
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
     } catch (e) {
-      debugPrint('[GroupChatSocketService] Error sending heartbeat: $e');
       _handleDisconnection();
     }
   }
 
   void _handleHeartbeat(Map<String, dynamic> data) {
     if (data['require_response'] == true) {
-      final response = {
-        'type': 'heartbeat_response',
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-      _channel?.sink.add(jsonEncode(response));
+      sendRawMessage(
+        jsonEncode({
+          'type': 'heartbeat_response',
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
     }
   }
 
   void _handleDisconnection() {
+    if (!_isConnected) return;
     _isConnected = false;
     _connectionStatusController.add(false);
     _heartbeatTimer?.cancel();
@@ -178,12 +210,15 @@ class GroupChatSocketService {
 
   void _scheduleReconnect() {
     _reconnectAttempts++;
-    final delay = Duration(seconds: _reconnectAttempts * 2);
+    final delay = Duration(
+      seconds: pow(2, _reconnectAttempts).toInt().clamp(2, 30),
+    );
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(delay, () {
-      debugPrint('[GroupChatSocketService] Attempting to reconnect... (attempt $_reconnectAttempts)');
-      // Note: You would need to store conversationId and token to reconnect
-      // For now, we'll just log the attempt
+      debugPrint(
+        '[GroupChatSocketService] Reconnecting... attempt $_reconnectAttempts',
+      );
+      // You’ll need to re-call connect() from the page
     });
   }
 
@@ -194,13 +229,10 @@ class GroupChatSocketService {
     _connectionStatusController.add(false);
     _heartbeatTimer?.cancel();
     _reconnectTimer?.cancel();
-
-    debugPrint('[GroupChatSocketService] WebSocket disconnected');
   }
 
   void dispose() {
+    disconnect();
     _connectionStatusController.close();
-    _heartbeatTimer?.cancel();
-    _reconnectTimer?.cancel();
   }
 }

@@ -9,9 +9,8 @@ class EventService {
 
   static Future<void> sendResponse(String eventId, String responseType) async {
     final token = await _getToken(); // Get the token
-    final url = Uri.parse('$baseUrl/event/events/$eventId/respond/');
+    final url = Uri.parse('${Urls.respondToEvent}$eventId/respond/');
 
-    // Debugging output: print the token and the URL
     print('Sending response for event ID: $eventId');
     print('URL: $url');
     print('Response Type: $responseType');
@@ -21,18 +20,15 @@ class EventService {
       'Content-Type': 'application/json',
     };
 
-    // Debugging output: print the headers
     print('Headers: $headers');
 
     final body = jsonEncode({'response': responseType});
 
-    // Debugging output: print the body being sent
     print('Body: $body');
 
     try {
       final response = await http.post(url, headers: headers, body: body);
 
-      // Debugging output: print the response status and body
       print('Response Status: ${response.statusCode}');
       print('Response Body: ${response.body}');
 
@@ -48,7 +44,6 @@ class EventService {
     }
   }
 
-  /// Fetches upcoming events from the API
   static Future<List<Event>> fetchEvents() async {
     print("🔍 Starting fetchEvents...");
 
@@ -59,11 +54,11 @@ class EventService {
       print("❌ No token found.");
       return [];
     }
-    final urls = Urls.fatch_upcoming_events;
+    final urls = Urls.fetchUpcomingEvents;
 
     print("🌐 Making GET request to ${urls}");
     final response = await http.get(
-      Uri.parse(Urls.fatch_upcoming_events),
+      Uri.parse(Urls.fetchUpcomingEvents),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -85,7 +80,6 @@ class EventService {
     }
   }
 
-  /// Retrieves token from SharedPreferences
   static Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('accessToken');
@@ -102,7 +96,7 @@ class EventService {
       throw Exception("No token found");
     }
 
-    final eventUrl = "$baseUrl/event/events/$eventId/";
+    final eventUrl = "${Urls.eventDetails}$eventId/";
     print("🌐 Making GET request to $eventUrl");
 
     final response = await http.get(
@@ -129,7 +123,6 @@ class EventService {
     }
   }
 
-  /// Fetches events where the user has responded "Going"
   static Future<List<Event>> fetchUserGoingEvents() async {
     print("🔍 Starting fetchUserGoingEvents...");
 
@@ -141,7 +134,7 @@ class EventService {
       throw Exception("No token found");
     }
 
-    final url = Uri.parse('$baseUrl/event/events/');
+    final url = Uri.parse(Urls.fetchUpcomingEvents);
     print("🌐 Making GET request to $url");
 
     final response = await http.get(
@@ -173,7 +166,6 @@ class EventService {
     }
   }
 
-  /// Helper method to get current user ID from SharedPreferences or AuthProvider
   static Future<String?> _getUserId() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('userId'); // Adjust key based on your app's storage

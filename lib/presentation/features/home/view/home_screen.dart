@@ -1,5 +1,6 @@
 import 'package:circleslate/core/constants/app_assets.dart';
 import 'package:circleslate/core/constants/app_colors.dart';
+import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../widgets/calendar_part.dart';
 import '../widgets/my_group_section.dart';
+import '../../group_management/view/day_details_dialog.dart';
 // import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class NotificationIconWithBadge extends StatefulWidget {
@@ -451,6 +453,96 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> _showAvailabilityDetails(DateTime date) async {
+    final availabilityProvider = Provider.of<AvailabilityProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    try {
+      // Show loading dialog first
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text("Loading availability details..."),
+              ],
+            ),
+          );
+        },
+      );
+
+      // Fetch day details
+      await availabilityProvider.fetchDayDetails(date);
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Show day details dialog
+      if (mounted) {
+        if (availabilityProvider.dayDetailsError != null) {
+          // Show error dialog
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text("Error"),
+                content: Text(availabilityProvider.dayDetailsError!),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text("OK"),
+                  ),
+                ],
+              );
+            },
+          );
+        } else if (availabilityProvider.selectedDayDetails != null) {
+          // Show day details
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return DayDetailsDialog(
+                dayDetails: availabilityProvider.selectedDayDetails!,
+                userName: authProvider.userProfile?['full_name'],
+                isCurrentUser: true,
+              );
+            },
+          );
+        }
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      // Show error dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text("Error"),
+              content: Text("Failed to load availability details: $e"),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text("OK"),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -520,7 +612,7 @@ class _HomePageState extends State<HomePage> {
                                   border: Border.all(
                                     color: Colors.white,
                                     width: screenWidth * 0.005,
-                                  ), // Responsive border width
+                                  ),
                                 ),
                                 child: ClipOval(
                                   child: Consumer<AuthProvider>(
@@ -533,7 +625,7 @@ class _HomePageState extends State<HomePage> {
                                         final imageUrl =
                                         photo.toString().startsWith("http")
                                             ? photo.toString()
-                                            : "http://72.60.26.57$photo";
+                                            : "http:app.circleslate.com$photo";
 
                                         return Image.network(
                                           imageUrl,
@@ -580,11 +672,7 @@ class _HomePageState extends State<HomePage> {
                             );
                           } else {
                             // Optionally handle if userId is null
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("User not logged in"),
-                              ),
-                            );
+                            SnackbarUtils.showWarning(context, "User not logged in");
                           }
                         },
                       ),
@@ -935,13 +1023,7 @@ class _HomePageState extends State<HomePage> {
                                       .trim();
 
                                   if (name.isEmpty || ageText.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          "Please fill in all child details.",
-                                        ),
-                                      ),
-                                    );
+                                    SnackbarUtils.showWarning(context, "Please fill in all child details.");
                                     allSuccess = false;
                                     continue;
                                   }
@@ -958,13 +1040,7 @@ class _HomePageState extends State<HomePage> {
                                 }
 
                                 if (allSuccess) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        "Children saved successfully!",
-                                      ),
-                                    ),
-                                  );
+                                  SnackbarUtils.showSuccess(context, "Children saved successfully!");
 
                                   // Refresh children list in Home Page
                                   final children = await authProvider
@@ -1024,7 +1100,7 @@ class _HomePageState extends State<HomePage> {
 
                   SizedBox(height: mediumSpacing), // Responsive spacing
                   // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                  const MyGroupsSection(), // Placeholder for MyGroupsSection
+                  const MyGroupsSection(),
                   // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                   Padding(
                     padding: EdgeInsets.all(screenWidth * 0.02), // Responsive padding
@@ -1230,6 +1306,9 @@ class _HomePageState extends State<HomePage> {
                   context,
                   listen: false,
                 ).toggleDateState(date.day);
+                
+                // Show availability details popup
+                _showAvailabilityDetails(date);
               }
                   : null,
               child: Container(

@@ -6,8 +6,6 @@ import '../../data/models/user_search_result_model.dart';
 import '../network/endpoints.dart';
 
 class UserSearchService {
-  static const String baseUrl = '${Urls.baseUrl}/chat';
-
   // Search users using REST API
   Future<List<UserSearchResult>> searchUsers(String query) async {
     print('[UserSearchService] searchUsers called with query: "$query"');
@@ -27,7 +25,7 @@ class UserSearchService {
       }
 
       final url = Uri.parse(
-          '$baseUrl/search-users/?q=${Uri.encodeComponent(query)}');
+          '${Urls.searchUsers}?q=${Uri.encodeComponent(query)}');
       print('[UserSearchService] Sending GET request to: $url');
 
       final response = await http.get(

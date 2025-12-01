@@ -10,7 +10,6 @@ import '../network/endpoints.dart';
 class UserImageHelper {
   static const String _baseUrl = '${Urls.baseUrl}';
 
-  /// Get the current user's profile image URL
   static String? getCurrentUserImageUrl(BuildContext context) {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -36,9 +35,7 @@ class UserImageHelper {
     return null;
   }
 
-  /// Get a user's profile image URL by user ID
   static Future<String?> getUserImageUrl(String userId) async {
-
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('accessToken');
@@ -63,18 +60,19 @@ class UserImageHelper {
         if (profilePhoto != null && profilePhoto.toString().isNotEmpty) {
           String imageUrl = profilePhoto.toString();
 
-          if (imageUrl.startsWith('http')) {
+          if (imageUrl.startsWith('https')) {
             return imageUrl;
           }
 
           if (imageUrl.startsWith('/')) {
             return '$_baseUrl$imageUrl';
           }
-
           return '$_baseUrl/media/$imageUrl';
         }
       } else {
-        debugPrint('[UserImageHelper] Failed to fetch user image: ${response.statusCode}');
+        debugPrint(
+          '[UserImageHelper] Failed to fetch user image: ${response.statusCode}',
+        );
       }
     } catch (e) {
       debugPrint('[UserImageHelper] Error fetching user image for $userId: $e');
@@ -82,14 +80,16 @@ class UserImageHelper {
 
     return null;
   }
-  
+
   static Widget buildUserAvatar({
     required String? imageUrl,
     double radius = 16,
     Color? backgroundColor,
     Color? iconColor,
   }) {
-    debugPrint('[UserImageHelper] Loading image for buildUserAvatar: $imageUrl');
+    debugPrint(
+      '[UserImageHelper] Loading image for buildUserAvatar: $imageUrl',
+    );
     if (imageUrl != null && imageUrl.isNotEmpty) {
       if (imageUrl.startsWith('http')) {
         return CachedNetworkImage(
@@ -100,7 +100,9 @@ class UserImageHelper {
             child: const CircularProgressIndicator(strokeWidth: 2),
           ),
           errorWidget: (context, url, error) {
-            debugPrint('[UserImageHelper] Error loading image: $error for URL: $url');
+            debugPrint(
+              '[UserImageHelper] Error loading image: $error for URL: $url',
+            );
             return CircleAvatar(
               radius: radius,
               backgroundColor: backgroundColor ?? Colors.grey[300],
@@ -123,7 +125,9 @@ class UserImageHelper {
           backgroundColor: backgroundColor ?? Colors.grey[200],
           backgroundImage: AssetImage(imageUrl),
           onBackgroundImageError: (error, stackTrace) {
-            debugPrint('[UserImageHelper] Error loading asset image: $error for URL: $imageUrl');
+            debugPrint(
+              '[UserImageHelper] Error loading asset image: $error for URL: $imageUrl',
+            );
           },
           child: null,
         );
@@ -141,14 +145,15 @@ class UserImageHelper {
     }
   }
 
-  /// Build a CircleAvatar widget with user image or fallback icon (with error handling)
   static Widget buildUserAvatarWithErrorHandling({
     required String? imageUrl,
     double radius = 16,
     Color? backgroundColor,
     Color? iconColor,
   }) {
-    debugPrint('[UserImageHelper] Loading image for buildUserAvatarWithErrorHandling: $imageUrl');
+    debugPrint(
+      '[UserImageHelper] Loading image for buildUserAvatarWithErrorHandling: $imageUrl',
+    );
     if (imageUrl != null && imageUrl.isNotEmpty) {
       if (imageUrl.startsWith('http')) {
         return CachedNetworkImage(
@@ -159,7 +164,9 @@ class UserImageHelper {
             child: const CircularProgressIndicator(strokeWidth: 2),
           ),
           errorWidget: (context, url, error) {
-            debugPrint('[UserImageHelper] Error loading image: $error for URL: $url');
+            debugPrint(
+              '[UserImageHelper] Error loading image: $error for URL: $url',
+            );
             return CircleAvatar(
               radius: radius,
               backgroundColor: backgroundColor ?? Colors.grey[300],
@@ -182,7 +189,9 @@ class UserImageHelper {
           backgroundColor: backgroundColor ?? Colors.grey[200],
           backgroundImage: AssetImage(imageUrl),
           onBackgroundImageError: (error, stackTrace) {
-            debugPrint('[UserImageHelper] Error loading asset image: $error for URL: $imageUrl');
+            debugPrint(
+              '[UserImageHelper] Error loading asset image: $error for URL: $imageUrl',
+            );
           },
           child: null,
         );
@@ -200,7 +209,6 @@ class UserImageHelper {
     }
   }
 
-  /// Build a CircleAvatar widget with current user's image
   static Widget buildCurrentUserAvatar({
     required BuildContext context,
     double radius = 16,

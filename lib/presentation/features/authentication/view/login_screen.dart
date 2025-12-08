@@ -18,6 +18,8 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
   bool _rememberMe = false;
 
   @override
@@ -43,7 +45,10 @@ class _LoginPageState extends State<LoginPage> {
         SnackbarUtils.showSuccess(context, 'Login successful!');
         context.go('/home');
       } else {
-        SnackbarUtils.showError(context, authProvider.errorMessage ?? 'Login failed.');
+        SnackbarUtils.showError(
+          context,
+          authProvider.errorMessage ?? 'Login failed.',
+        );
       }
     }
   }
@@ -56,14 +61,21 @@ class _LoginPageState extends State<LoginPage> {
           backgroundColor: Colors.white,
           body: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 20.0,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Align(
                     alignment: Alignment.topLeft,
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.black, size: 24),
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.black,
+                        size: 24,
+                      ),
                       onPressed: () {
                         context.pop();
                       },
@@ -81,7 +93,11 @@ class _LoginPageState extends State<LoginPage> {
                       width: 80,
                       height: 80,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.calendar_month, color: AppColors.primaryBlue, size: 80),
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.calendar_month,
+                        color: AppColors.primaryBlue,
+                        size: 80,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20.0),
@@ -112,6 +128,7 @@ class _LoginPageState extends State<LoginPage> {
                       children: [
                         AuthInputField(
                           controller: _emailController,
+                          focusNode: _emailFocusNode,
                           labelText: 'Email Address *',
                           hintText: 'Enter your email..',
                           keyboardType: TextInputType.emailAddress,
@@ -119,7 +136,9 @@ class _LoginPageState extends State<LoginPage> {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your email address';
                             }
-                            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                            if (!RegExp(
+                              r'^[^@]+@[^@]+\.[^@]+',
+                            ).hasMatch(value)) {
                               return 'Please enter a valid email address';
                             }
                             return null;
@@ -128,6 +147,7 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 20.0),
                         AuthInputField(
                           controller: _passwordController,
+                          focusNode: _passwordFocusNode,
                           labelText: 'Password *',
                           hintText: 'Enter your password...',
                           isPassword: true,
@@ -173,7 +193,10 @@ class _LoginPageState extends State<LoginPage> {
                           const SizedBox(width: 8.0),
                           const Text(
                             'Remember me',
-                            style: TextStyle(fontSize: 14.0, color: AppColors.textColorSecondary),
+                            style: TextStyle(
+                              fontSize: 14.0,
+                              color: AppColors.textColorSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -196,7 +219,14 @@ class _LoginPageState extends State<LoginPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: authProvider.isLoading ? null : () => _handleLogin(context),
+                      onPressed: authProvider.isLoading
+                          ? null
+                          : () {
+                              // FocusScope.of(context).unfocus();
+                              _emailFocusNode.unfocus();
+                              _passwordFocusNode.unfocus();
+                              _handleLogin(context);
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,
                         padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -207,21 +237,21 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       child: authProvider.isLoading
                           ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
                           : const Text(
-                        'Log In',
-                        style: TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
+                              'Log In',
+                              style: TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 20.0),

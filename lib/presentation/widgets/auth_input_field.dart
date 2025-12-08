@@ -4,6 +4,7 @@ import 'package:circleslate/core/constants/app_colors.dart'; // Make sure this p
 
 class AuthInputField extends StatefulWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final String labelText;
   final String hintText;
   final TextInputType keyboardType;
@@ -13,6 +14,7 @@ class AuthInputField extends StatefulWidget {
 
   const AuthInputField({
     Key? key,
+    required this.focusNode,
     required this.controller,
     required this.labelText,
     required this.hintText,
@@ -51,6 +53,7 @@ class _AuthInputFieldState extends State<AuthInputField> {
         const SizedBox(height: 8), // Space between label and text field
         TextFormField(
           controller: widget.controller,
+          focusNode: widget.focusNode,
           keyboardType: widget.keyboardType,
           obscureText: _obscureText,
           validator: widget.validator, // Pass the validator to TextFormField

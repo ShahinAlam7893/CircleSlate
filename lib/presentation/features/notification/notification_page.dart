@@ -56,10 +56,6 @@ class _NotificationPageState extends State<NotificationPage> {
         "📦 [NotificationPage] Notifications fetched: ${notifications.length}",
       );
 
-      // for (var n in notifications) {
-      //   debugPrint("   → Notification ID=${n.id}, title=${n.title}, eventId=${n.eventId}");
-      // }
-
       setState(() {
         _notifications = notifications;
         _loading = false;

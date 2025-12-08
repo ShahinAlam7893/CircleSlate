@@ -19,6 +19,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
   TextEditingController();
+    final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
+
+
 
   @override
   void dispose() {
@@ -102,6 +106,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   children: [
                     AuthInputField(
                       controller: _currentPasswordController,
+                      focusNode:  _passwordFocusNode,
                       labelText: 'Old Password *',
                       hintText: 'Enter current password...',
                       isPassword: true,
@@ -110,11 +115,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                           return 'Please enter your current password';
                         }
                         return null;
-                      },
+                      }, 
                     ),
                     const SizedBox(height: 20),
                     AuthInputField(
                       controller: _newPasswordController,
+                     focusNode:  _passwordFocusNode,
                       labelText: 'New Password *',
                       hintText: 'Enter new password...',
                       isPassword: true,
@@ -134,6 +140,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                     const SizedBox(height: 20),
                     AuthInputField(
                       controller: _confirmPasswordController,
+                       focusNode:  _passwordFocusNode,
                       labelText: 'Confirm Password *',
                       hintText: 'Confirm new password...',
                       isPassword: true,

@@ -48,7 +48,7 @@ class ProfessionalMessageBubble extends StatelessWidget {
                 padding: EdgeInsets.only(left: 52.w, bottom: 4.h),
                 child: Text(
                   message.senderName ?? '',
-                  style: TextStyle(fontSize: 10.sp, color: Colors.black87),
+                  style: TextStyle(fontSize: 10.sp, color: Colors.white70),
                 ),
               ),
 

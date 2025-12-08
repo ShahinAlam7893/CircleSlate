@@ -60,10 +60,9 @@ class ConversationProvider extends ChangeNotifier {
   StoredMessage? get editingMessage => _editingMessage;
   bool get isEditing => _editingMessage != null;
 
-  // ✅ CRITICAL FIX: Track if chat page is actually visible
+
   bool _isChatPageVisible = false;
 
-  // ✅ ADD PUBLIC GETTER
   bool get isChatPageVisible => _isChatPageVisible;
 
   ConversationProvider({
@@ -88,12 +87,10 @@ class ConversationProvider extends ChangeNotifier {
     _isChatPageVisible = visible;
     debugPrint('[Provider] Chat page visibility changed: $visible');
 
-    // If page just became visible AND messages are loaded, mark unread as read
     if (visible && _messages.isNotEmpty) {
       debugPrint(
         '[Provider] Page became visible, checking for unread messages...',
       );
-      // Schedule marking after a brief delay to ensure everything is ready
       Future.delayed(const Duration(milliseconds: 300), () {
         if (_isChatPageVisible) {
           markAllUnreadAsRead();
@@ -147,7 +144,6 @@ class ConversationProvider extends ChangeNotifier {
     debugPrint("INIT → Chat ready! Input enabled.");
     notifyListeners();
 
-    // DON'T mark as read here - wait for page to explicitly call setPageVisible(true)
   }
 
   Future<String> _createConversation() async {

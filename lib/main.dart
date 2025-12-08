@@ -1,23 +1,20 @@
+// lib/main.dart
+
 import 'dart:async';
+import 'package:circleslate/core/network/server_status_manager.dart';
+import 'package:circleslate/presentation/common_providers/auth_provider.dart';
+import 'package:circleslate/presentation/common_providers/availability_provider.dart';
 import 'package:circleslate/presentation/common_providers/chat_list_provider.dart';
-import 'package:circleslate/presentation/common_providers/server_status_provider.dart';
-import 'package:circleslate/presentation/shared/internet_connection_banner.dart';
+import 'package:circleslate/presentation/common_providers/conversation_provider.dart';
+import 'package:circleslate/presentation/common_providers/internet_provider.dart';
+import 'package:circleslate/presentation/common_providers/user_events_provider.dart';
+import 'package:circleslate/presentation/routes/app_router.dart';
 import 'package:circleslate/presentation/shared/no_internet_page.dart';
 import 'package:circleslate/presentation/shared/server_down_banner.dart';
+import 'package:circleslate/data/datasources/shared_pref/local/token_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
-
-// Providers
-import 'package:circleslate/presentation/common_providers/auth_provider.dart';
-import 'package:circleslate/presentation/common_providers/availability_provider.dart';
-import 'package:circleslate/presentation/common_providers/conversation_provider.dart';
-import 'package:circleslate/presentation/common_providers/user_events_provider.dart';
-import 'package:circleslate/presentation/common_providers/internet_provider.dart';
-
-// Router & Token Manager
-import 'package:circleslate/presentation/routes/app_router.dart';
-import 'package:circleslate/data/datasources/shared_pref/local/token_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,59 +24,97 @@ Future<void> main() async {
       designSize: const Size(375, 812),
       minTextAdapt: true,
       splitScreenMode: true,
-      builder: (context, child) {
-        return MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => AuthProvider()),
-            ChangeNotifierProvider(create: (_) => AvailabilityProvider()),
-            ChangeNotifierProxyProvider<AuthProvider, ConversationProvider>(
-              create: (context) => ConversationProvider(
-                Provider.of<AuthProvider>(context, listen: false),
-              ),
-              update: (context, authProvider, conversationProvider) {
-                return conversationProvider!;
-              },
-            ),
-            ChangeNotifierProvider(create: (_) => UserEventsProvider()),
-            ChangeNotifierProvider(create: (_) => InternetProvider()),
-            ChangeNotifierProvider(create: (_) => ServerStatusProvider()),
-            ChangeNotifierProvider(create: (_) => ChatListProvider()),
-            ChangeNotifierProxyProvider<AuthProvider, ConversationProvider>(
-              create: (context) => ConversationProvider(
-                Provider.of<AuthProvider>(context, listen: false),
-              ),
-              update: (context, authProvider, conversationProvider) {
-                return conversationProvider!;
-              },
-            ),
-          ],
-          child: const MyApp(),
-        );
-      },
+      builder: (context, child) => const MyApp(),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'CircleSlate',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        fontFamily: 'Poppins',
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => AvailabilityProvider()),
+        ChangeNotifierProvider(create: (_) => UserEventsProvider()),
+        ChangeNotifierProvider(create: (_) => ChatListProvider()),
+        ChangeNotifierProvider(create: (_) => InternetProvider()),
+        ChangeNotifierProvider(create: (_) => ServerStatusManager()), // ← Global server status
+
+        ChangeNotifierProxyProvider<AuthProvider, ConversationProvider>(
+              create: (context) => ConversationProvider(
+                Provider.of<AuthProvider>(context, listen: false),
+              ),
+              update: (context, authProvider, conversationProvider) {
+                return conversationProvider!;
+              },
+            ),
+      ],
+      child: MaterialApp.router(
+        routerConfig: AppRouter.router,
+        debugShowCheckedModeBanner: false,
+        title: 'CircleSlate',
+        theme: ThemeData(
+          fontFamily: 'Poppins',
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+          primarySwatch: Colors.blue,
+        ),
+        builder: (context, child) {
+          return GlobalConnectionOverlays(child: child!);
+        },
       ),
-      home: const SplashScreen(),
     );
   }
 }
 
+/// Global overlay manager — handles both No Internet & Server Down full-screen
+class GlobalConnectionOverlays extends StatelessWidget {
+  final Widget child;
+  const GlobalConnectionOverlays({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        child,
+
+        // ─── FULL-SCREEN: NO INTERNET ───
+        Consumer<InternetProvider>(
+          builder: (context, internetProvider, _) {
+            if (internetProvider.isConnected) {
+              return const SizedBox.shrink();
+            }
+            return const IgnorePointer(
+              child: NoInternetScreen(),
+            );
+          },
+        ),
+
+        // ─── FULL-SCREEN: SERVER DOWN (blocks everything) ───
+        Consumer<ServerStatusManager>(
+          builder: (context, serverStatus, _) {
+            if (!serverStatus.isServerDown) {
+              return const SizedBox.shrink();
+            }
+            return const IgnorePointer(
+              ignoring: false, // Blocks all taps
+              child: Material(
+                color: Colors.transparent,
+                child: ServerDownScreen(),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Optional: Splash screen (if you still use it somewhere)
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -95,10 +130,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initializeApp() async {
-    final tokens = await _tokenManager.getTokens().catchError((error) {
-      debugPrint('Error loading tokens: $error');
-      return null;
-    });
+    final tokens = await _tokenManager.getTokens();
 
     if (!mounted) return;
 
@@ -106,46 +138,22 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (tokens != null) {
       authProvider.setTokens(tokens.accessToken, tokens.refreshToken);
-      await authProvider.initializeUserData();
+      await authProvider.initializeUserData().catchError((_) {});
     }
-
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const InternetAwareWrapper()),
-    );
+    // GoRouter handles navigation automatically
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
-  }
-}
-
-class InternetAwareWrapper extends StatefulWidget {
-  const InternetAwareWrapper({Key? key}) : super(key: key);
-
-  @override
-  State<InternetAwareWrapper> createState() => _InternetAwareWrapperState();
-}
-
-class _InternetAwareWrapperState extends State<InternetAwareWrapper> {
-  @override
-  Widget build(BuildContext context) {
-    final isConnected = context.watch<InternetProvider>().isConnected;
-
-    if (!isConnected) {
-      return const InternetConnectionBanner();
-    }
-
-    return InternetAwareScaffold(
-      child: ServerAwareScaffold(
-        child: MaterialApp.router(
-          routerConfig: AppRouter.router,
-          debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            primarySwatch: Colors.blue,
-            fontFamily: 'Poppins',
-            visualDensity: VisualDensity.adaptivePlatformDensity,
-          ),
+    return const Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: Colors.blue),
+            SizedBox(height: 20),
+            Text("Loading CircleSlate...", style: TextStyle(fontSize: 16)),
+          ],
         ),
       ),
     );

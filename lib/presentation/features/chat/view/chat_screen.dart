@@ -54,23 +54,19 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage>
       initialChatPartnerImageUrl: widget.chatPartnerImageUrl,
     );
 
-    // ✅ CRITICAL FIX: Mark page as visible and trigger read operation
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _markConversationAsReadOnOpen();
     });
   }
 
-  /// Mark all unread messages as read when opening the chat
   Future<void> _markConversationAsReadOnOpen() async {
     if (_hasMarkedAsRead) return;
     _hasMarkedAsRead = true;
 
     debugPrint('[1:1 Chat] 📖 Page opened → Setting as visible');
 
-    // ✅ Tell provider the page is now visible
     _provider.setPageVisible(true);
 
-    // Clear badge immediately in UI
     if (mounted) {
       final chatListProvider = Provider.of<ChatListProvider>(
         context,
@@ -79,7 +75,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage>
       chatListProvider.markChatAsRead(widget.conversationId);
     }
 
-    // ✅ Wait for messages to load, then explicitly mark as read
     await Future.delayed(const Duration(milliseconds: 300));
 
     if (mounted) {
@@ -94,10 +89,8 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
 
-    // ✅ CRITICAL: Mark page as NOT visible before disposing
     _provider.setPageVisible(false);
 
-    // Force refresh chat list when leaving
     if (mounted) {
       final chatListProvider = Provider.of<ChatListProvider>(
         context,
@@ -113,7 +106,6 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // ✅ Mark as visible when app resumes
       _provider.setPageVisible(true);
       _provider.resume();
 
@@ -125,14 +117,12 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage>
       }
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
-      // ✅ Mark as NOT visible when app goes to background
       _provider.setPageVisible(false);
       _provider.pause();
     }
   }
 
   Future<bool> _onWillPop() async {
-    // Final refresh before going back
     if (mounted) {
       Provider.of<ChatListProvider>(
         context,
@@ -144,6 +134,7 @@ class _OneToOneConversationPageState extends State<OneToOneConversationPage>
 
   @override
   Widget build(BuildContext context) {
+    // ignore: deprecated_member_use
     return WillPopScope(
       onWillPop: _onWillPop,
       child: ChangeNotifierProvider<ConversationProvider>.value(

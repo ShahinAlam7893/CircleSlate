@@ -41,7 +41,8 @@ class AppNotification {
       conversationName: json['conversation_name'],
       chatPartnerId: json['sender']?['id']?.toString(),
       chatPartnerName: json['sender']?['full_name'],
-      isGroupChat: json['notification_type'] == "group_add",
+      // isGroupChat: json['notification_type'] == "group_add",
+      isGroupChat: json['is_group'] ?? false,
       isRead: json['is_read'] ?? false,
       timestamp: DateTime.parse(json['created_at']),
     );

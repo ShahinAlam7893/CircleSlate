@@ -246,28 +246,29 @@ class AppRouter {
       //   },
       // ),
       GoRoute(
-        path: RoutePaths.onetooneconversationpage,
-        builder: (context, state) {
-          final Map<String, dynamic>? extraData =
-              state.extra as Map<String, dynamic>?;
+  path: RoutePaths.onetooneconversationpage,
+  builder: (context, state) {
+    final Map<String, dynamic>? extraData = state.extra as Map<String, dynamic>?;
 
-          final String chatPartnerName =
-              extraData?['chatPartnerName'] ?? 'Unknown Chat Partner';
-          final String currentUserId = extraData?['currentUserId'] ?? '';
-          final String chatPartnerId = extraData?['chatPartnerId'] ?? '';
-          final bool isGroupChat = extraData?['isGroupChat'] ?? false;
-          final bool isCurrentUserAdminInGroup =
-              extraData?['isCurrentUserAdminInGroup'] ?? false;
+    final String conversationId = extraData?['conversationId'] ?? '';
+    final String chatPartnerName = extraData?['chatPartnerName'] ?? 'Chat';
+    final String chatPartnerId = extraData?['chatPartnerId'] ?? '';
+    final String currentUserId = extraData?['currentUserId'] ?? '';
 
-          return OneToOneConversationPage(
-            chatPartnerName: chatPartnerName,
-            currentUserId: currentUserId,
-            chatPartnerId: chatPartnerId,
-            conversationId: extraData?['conversationId'] ?? '',
-            chatPartnerImageUrl: extraData?['chatPartnerImageUrl'] ?? '',
-          );
-        },
-      ),
+    // CHANGE THIS LINE:
+    final bool isGroupChat = extraData?['isGroupChat'] == true || 
+        (extraData?['isGroupChat']?.toString() == 'true');
+
+    return OneToOneConversationPage(
+      conversationId: conversationId,
+      chatPartnerName: chatPartnerName,
+      chatPartnerId: chatPartnerId,
+      currentUserId: currentUserId,
+      chatPartnerImageUrl: extraData?['chatPartnerImageUrl'] ?? '',
+      // Remove any isGroupChat param if not needed, or pass it if used inside
+    );
+  },
+),
 
       // GoRoute(
       //   path: RoutePaths.onetooneconversationpage,
@@ -316,20 +317,26 @@ class AppRouter {
         },
       ),
       GoRoute(
-        path: RoutePaths.groupConversationPage,
-        builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>? ?? {};
-          final currentUserId = extra['currentUserId'] ?? '';
-          final conversationId = extra['conversationId'] ?? '';
+  path: RoutePaths.groupConversationPage,
+  builder: (context, state) {
+    final extra = state.extra as Map<String, dynamic>? ?? {};
+    final currentUserId = extra['currentUserId'] ?? '';
+    final conversationId = extra['conversationId'] ?? '';
+    final groupName = extra['groupName'] ?? 'Group Chat';
 
-          return GroupConversationPage(
-            groupId: conversationId,
-            currentUserId: currentUserId,
-            groupName: extra['groupName'] ?? '',
-            isCurrentUserAdminInGroup: extra['isCurrentUserAdminInGroup'] ?? '',
-          );
-        },
-      ),
+    // Safely parse isGroupChat (defaults to true for group)
+    final bool isGroupChat = extra['isGroupChat'] == true || 
+        (extra['isGroupChat']?.toString() == 'true');
+
+    return GroupConversationPage(
+      groupId: conversationId,
+      currentUserId: currentUserId,
+      groupName: groupName,
+      isCurrentUserAdminInGroup: extra['isCurrentUserAdminInGroup'] ?? false,
+      // If your GroupConversationPage uses isGroupChat anywhere, now it's safe
+    );
+  },
+),
       GoRoute(
         path: RoutePaths.addmemberpage,
         builder: (context, state) =>

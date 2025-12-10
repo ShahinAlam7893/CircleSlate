@@ -177,7 +177,6 @@ class _ChatListViewState extends State<_ChatListView> {
   }
 }
 
-// FIXED & PERFECTED SEARCH TILE — NOW USES ConversationManager
 class _UserSearchTile extends StatelessWidget {
   final UserSearchResult user;
   const _UserSearchTile({required this.user});
@@ -210,7 +209,6 @@ class _UserSearchTile extends StatelessWidget {
         }
 
         try {
-          // THIS IS THE KEY FIX → Use the working manager
           final result = await ConversationManager.getOrCreateConversation(
             authProvider.currentUserId!,
             user.id.toString(),
@@ -245,7 +243,6 @@ class _UserSearchTile extends StatelessWidget {
             },
           );
 
-          // Refresh chat list when returning
           if (context.mounted) {
             chatListProvider.refreshChats(silent: true);
           }
@@ -262,7 +259,6 @@ class _UserSearchTile extends StatelessWidget {
   }
 }
 
-// YOUR BEAUTIFUL CHAT TILE — UNCHANGED & STILL PERFECT
 class _ChatTile extends StatelessWidget {
   final Chat chat;
   final String? currentUserId;

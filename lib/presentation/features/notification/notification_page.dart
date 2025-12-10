@@ -1,6 +1,8 @@
 // notification_page.dart with Event
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/notification_service.dart';
@@ -69,6 +71,10 @@ class _NotificationPageState extends State<NotificationPage> {
       });
     }
   }
+
+  String customDateFormat(DateTime timestamp) {
+  return DateFormat("dd MMM yyyy, hh:mm a").format(timestamp);
+}
 
   void _handleNotificationTap(
     AppNotification notification,
@@ -188,7 +194,7 @@ class _NotificationPageState extends State<NotificationPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          "${notification.timestamp.toLocal()}".split('.')[0],
+                          customDateFormat(notification.timestamp),
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,

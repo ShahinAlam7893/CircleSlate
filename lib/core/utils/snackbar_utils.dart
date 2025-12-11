@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
 class SnackbarUtils {
-  /// Shows a success snackbar with professional styling
   static void showSuccess(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -44,7 +43,6 @@ class SnackbarUtils {
     );
   }
 
-  /// Shows an error snackbar with professional styling
   static void showError(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -86,7 +84,6 @@ class SnackbarUtils {
     );
   }
 
-  /// Shows an info snackbar with professional styling
   static void showInfo(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -128,7 +125,6 @@ class SnackbarUtils {
     );
   }
 
-  /// Shows a warning snackbar with professional styling
   static void showWarning(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -170,7 +166,6 @@ class SnackbarUtils {
     );
   }
 
-  /// Shows a loading snackbar with professional styling
   static void showLoading(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -208,7 +203,6 @@ class SnackbarUtils {
     );
   }
 
-  /// Shows a custom snackbar with professional styling
   static void showCustom(
     BuildContext context, {
     required String message,
@@ -252,7 +246,6 @@ class SnackbarUtils {
     );
   }
 
-  /// Shows a custom snackbar with action button and professional styling
   static void showCustomWithAction(
     BuildContext context, {
     required String message,

@@ -260,7 +260,7 @@ class _GroupManagementPageState extends State<GroupManagementPage> {
       return;
     }
 
-    final userIds = result as List<String>;
+    final userIds = result;
     if (userIds.isEmpty) {
       debugPrint('[GroupManagementPage] No user IDs to add, aborting');
       return;

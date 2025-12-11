@@ -6,7 +6,6 @@ import '../../data/models/user_search_result_model.dart';
 import '../network/endpoints.dart';
 
 class UserSearchService {
-  // Search users using REST API
   Future<List<UserSearchResult>> searchUsers(String query) async {
     print('[UserSearchService] searchUsers called with query: "$query"');
 

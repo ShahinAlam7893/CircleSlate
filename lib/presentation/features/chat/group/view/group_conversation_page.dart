@@ -2,15 +2,13 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'package:circleslate/core/network/endpoints.dart';
 import 'package:circleslate/core/utils/snackbar_utils.dart';
-import 'package:circleslate/presentation/common_providers/chat_list_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:circleslate/core/constants/app_colors.dart';
 import 'package:circleslate/core/services/message_storage_service.dart';
 import 'package:circleslate/core/services/message_read_service.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:circleslate/core/utils/user_image_helper.dart';
@@ -130,7 +128,7 @@ class _GroupConversationPageState extends State<GroupConversationPage>
 
       final response = await http.get(
         Uri.parse(
-          'https://app.circleslate.com/api/chat/conversations/${widget.groupId}/',
+          '${Urls.baseUrl}/api/chat/conversations/${widget.groupId}/',
         ),
         headers: {'Authorization': 'Bearer $token'},
       );

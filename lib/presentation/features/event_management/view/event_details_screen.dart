@@ -97,14 +97,14 @@ class EventDetailsPage extends StatefulWidget {
 }
 
 class _EventDetailsPageState extends State<EventDetailsPage> {
-  int _selectedIndex = 1; // Assuming Events tab is selected
-  bool _isJoining = true; // State for "I'm Joining" / "Decline" buttons
+  int _selectedIndex = 1; 
+  bool _isJoining = true; 
   String? _responseStatus;
 
   late Future<Event> _eventDetails;
-  bool _isNavigating = false; // Flag to prevent multiple navigations
-  bool _isJoinLoading = false; // Loading state for Join button
-  bool _isDeclineLoading = false; // Loading state for Decline button
+  bool _isNavigating = false;
+  bool _isJoinLoading = false; 
+  bool _isDeclineLoading = false;
 
   @override
   void initState() {
@@ -112,7 +112,6 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     _eventDetails = EventService.fetchEventDetails(widget.eventId);
   }
 
-  // Add event to Google Calendar
   Future<void> _addToGoogleCalendar(Event event) async {
     if (event.date.isEmpty || event.startTime.isEmpty || event.endTime.isEmpty) {
       SnackbarUtils.showWarning(context, "Event date, start time, or end time is missing");
@@ -157,7 +156,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
       final String end = formatDateTime(endDateTime);
 
       final Uri url = Uri.parse(
-        "https://calendar.google.com/calendar/u/0/r/eventedit"
+        "${Urls.googleCalendar}"
             "?text=$title"
             "&details=$details"
             "&location=$location"
@@ -846,7 +845,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
       BuildContext context,
       ) async {
     final token = await _getToken();
-    final String apiUrl = '${Urls.baseUrl}/event/events/$eventId/request_ride/';
+    final String apiUrl = '${Urls.baseUrl}/api/event/events/$eventId/request_ride/';
     final headers = {
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',

@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
-/// Utility class to manage profile data consistently across the app
 class ProfileDataManager {
   static const String _profileKey = 'userProfile';
   static const String _lastUpdateKey = 'lastProfileUpdate';
 
-  /// Save profile data to local storage
   static Future<void> saveProfileData(Map<String, dynamic> profileData) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -19,7 +17,6 @@ class ProfileDataManager {
     }
   }
 
-  /// Load profile data from local storage
   static Future<Map<String, dynamic>?> loadProfileData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -36,7 +33,6 @@ class ProfileDataManager {
     return null;
   }
 
-  /// Check if profile data is stale (older than specified duration)
   static Future<bool> isProfileDataStale({Duration maxAge = const Duration(minutes: 5)}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -54,7 +50,6 @@ class ProfileDataManager {
     }
   }
 
-  /// Clear profile data from local storage
   static Future<void> clearProfileData() async {
     try {
       final prefs = await SharedPreferences.getInstance();

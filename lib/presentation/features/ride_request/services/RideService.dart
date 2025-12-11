@@ -17,7 +17,7 @@ class RideService {
     print("🔑 Token: $token");
 
     // Step: Use eventId dynamically in the URL
-    final url = Uri.parse('$baseUrl/event/events/$eventId/ride-requests/');
+    final url = Uri.parse('$baseUrl/api/event/events/$eventId/ride-requests/');
     print("🌐 Request URL: $url");
 
     final headers = {

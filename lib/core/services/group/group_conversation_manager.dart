@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:circleslate/core/network/endpoints.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
@@ -6,9 +7,8 @@ import 'package:flutter/foundation.dart';
 import '../../../data/models/conversation_model.dart';
 
 class GroupConversationManager {
-  static const String baseUrl = 'https://app.circleslate.com/api/chat';
+  static const String baseUrl = '${Urls.baseUrl}/api/chat';
 
-  // https://app.circleslate.com/api/chat
   /// Create a new group conversation
   static Future<Conversation> createGroupConversation(
     String currentUserId,

@@ -1,4 +1,5 @@
 import 'package:circleslate/core/constants/app_colors.dart';
+import 'package:circleslate/core/network/endpoints.dart';
 import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/presentation/common_providers/availability_provider.dart';
 import 'package:circleslate/presentation/routes/app_router.dart';
@@ -358,7 +359,7 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
                         
                         print('🚀 API CALL - Save Availability Request Data:');
                         print('═══════════════════════════════════════════════');
-                        print('🌐 API Endpoint: https://app.circleslate.com/api/calendar/availability/');
+                        print('🌐 API Endpoint: ${Urls.baseUrl}/api/calendar/availability/');
                         print('📋 Method: POST');
                         print('📊 Request Data:');
                         print('  Status: ${requestData['selectedStatus']}');
@@ -385,7 +386,7 @@ class _AvailabilityPageState extends State<AvailabilityPage> {
                         // 📝 Log API Response
                         print('📥 API RESPONSE - Save Availability:');
                         print('═══════════════════════════════════════════════');
-                        print('🌐 API Endpoint: https://app.circleslate.com/api/calendar/availability/');
+                        print('🌐 API Endpoint: ${Urls.baseUrl}/api/calendar/availability/');
                         print('📋 Method: POST');
                         print('✅ Success: $success');
                         print('⏰ Response Time: ${DateTime.now().toIso8601String()}');

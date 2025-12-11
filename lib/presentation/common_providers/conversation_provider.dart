@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:circleslate/core/network/endpoints.dart';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:circleslate/data/models/conversation_model.dart';
@@ -69,8 +70,7 @@ class ConversationProvider extends ChangeNotifier {
     }
 
     final uri = Uri.parse(
-      'ws://app.circleslate.com/ws/chat/conversations/?token=$token',
-      // 'https://app.circleslate.com/chat/conversations/?token=$token',
+      '${Urls.baseWsUrl}/chat/conversations/?token=$token',
     );
 
     _channel = WebSocketChannel.connect(uri);

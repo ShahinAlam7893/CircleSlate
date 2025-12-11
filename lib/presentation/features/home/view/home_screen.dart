@@ -4,16 +4,10 @@ import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:circleslate/core/constants/shared_utilities.dart';
 import 'package:circleslate/presentation/common_providers/availability_provider.dart';
-import 'package:intl/intl.dart'; // For date formatting
+// For date formatting
 import 'package:circleslate/presentation/common_providers/auth_provider.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../../core/services/notification_service.dart';
-import '../../../../presentation/common_providers/auth_provider.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../widgets/calendar_part.dart';
 import '../widgets/my_group_section.dart';
 import '../../group_management/view/day_details_dialog.dart';

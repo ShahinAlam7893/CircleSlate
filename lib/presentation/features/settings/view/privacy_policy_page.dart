@@ -109,7 +109,7 @@ class PrivacyPolicyPage extends StatelessWidget {
 /// 🔹 Reusable styled section title
 class _SectionTitle extends StatelessWidget {
   final String text;
-  const _SectionTitle(this.text, {super.key});
+  const _SectionTitle(this.text);
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +127,7 @@ class _SectionTitle extends StatelessWidget {
 
 class _SectionSubtitle extends StatelessWidget {
   final String text;
-  const _SectionSubtitle(this.text, {super.key});
+  const _SectionSubtitle(this.text);
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +148,7 @@ class _SectionSubtitle extends StatelessWidget {
 
 class _SectionText extends StatelessWidget {
   final String text;
-  const _SectionText(this.text, {super.key});
+  const _SectionText(this.text);
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +166,7 @@ class _SectionText extends StatelessWidget {
 
 class _BulletList extends StatelessWidget {
   final List<String> items;
-  const _BulletList({super.key, required this.items});
+  const _BulletList({required this.items});
 
   @override
   Widget build(BuildContext context) {

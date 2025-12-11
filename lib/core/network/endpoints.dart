@@ -95,13 +95,4 @@ class Urls {
   // ========== EXTERNAL INTEGRATIONS ==========
   static const String googleCalendar =
       'https://calendar.google.com/calendar/u/0/r/eventedit';
-
-  // ========== DEPRECATED/DUPLICATE ENDPOINTS (TO BE REMOVED) ==========
-  // These are duplicates with different naming conventions - keeping for backward compatibility
-  @deprecated
-  static const String fatch_upcoming_events = '$baseUrl/api/event/events/'; // Typo in original
-  @deprecated
-  static const String Create_events = '$baseUrl/api/event/events/create/'; // Different case
-  @deprecated
-  static const String setnewpassword = '$baseUrl/api/auth/set-new-password/'; // Use setNewPassword instead
 }

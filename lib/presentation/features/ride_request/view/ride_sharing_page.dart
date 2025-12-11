@@ -166,7 +166,7 @@ class _RideSharingPageState extends State<RideSharingPage> {
 
   Future<void> acceptRide(String rideId) async {
     final url =
-        'https://app.circleslate.com/api/event/ride-requests/$rideId/accept/';
+        '${Urls.baseUrl}/api/event/ride-requests/$rideId/accept/';
     print('API URL: $url');
 
     // Await the token

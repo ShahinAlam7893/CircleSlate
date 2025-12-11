@@ -1,6 +1,5 @@
 import 'package:circleslate/presentation/features/availability/view/availability_preview_page.dart';
 import 'package:circleslate/presentation/features/chat/view/chat_screen.dart';
-import 'package:circleslate/presentation/features/chat/view/samplechat.dart';
 import 'package:circleslate/presentation/features/event_management/view/create_edit_event_screen.dart';
 import 'package:circleslate/presentation/features/event_management/view/direct_invite_page.dart';
 import 'package:circleslate/presentation/features/event_management/view/event_details_screen.dart';
@@ -24,11 +23,9 @@ import 'package:circleslate/presentation/features/authentication/view/reset_pass
 import 'package:circleslate/presentation/features/authentication/view/signup_screen.dart';
 import 'package:circleslate/presentation/features/onboarding/view/splash_screen.dart';
 import 'package:circleslate/presentation/features/onboarding/view/onboarding_screen.dart';
-import '../../data/datasources/shared_pref/local/entity/token_entity.dart';
 import '../features/authentication/view/forgot_password_reset_page.dart';
 import '../features/chat/group/view/create_group_page.dart';
 import '../features/chat/group/view/group_conversation_page.dart';
-import '../features/event_management/view/google_calendar_page.dart';
 import '../features/notification/notification_page.dart';
 import 'package:circleslate/presentation/routes/route_observer.dart';
 

@@ -25,7 +25,7 @@ class MessageReadService {
 
       // Use the correct endpoint format
       final url = Uri.parse(
-        'https://app.circleslate.com/api/chat/messages/$messageId/read/',
+        '${Urls.baseUrl}/api/chat/messages/$messageId/read/',
       );
       debugPrint('[MessageReadService] → POST $url');
 

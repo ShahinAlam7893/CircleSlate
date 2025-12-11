@@ -277,8 +277,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
       return;
     }
 
-    final url = Uri.parse(Urls.Create_events);
-
+    final url = Uri.parse(Urls.createEvents);
     final invitesJson = InviteStorage().invitesJson;
     final List<int> invitees = invitesJson != null
         ? List<int>.from(
@@ -528,7 +527,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
         screenWidth * 0.04;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Light grey background
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: AppColors.primaryBlue,
         elevation: 0,
@@ -542,7 +541,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
           'Create Event',
           style: TextStyle(
             color: Colors.white,
-            fontSize: appBarTitleFontSize, // Responsive font size
+            fontSize: appBarTitleFontSize, 
             fontWeight: FontWeight.w500,
             fontFamily: 'Poppins',
           ),

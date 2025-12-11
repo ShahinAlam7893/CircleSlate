@@ -59,15 +59,13 @@ class Message {
 
   factory Message.fromJson(Map<String, dynamic> json) {
     String senderId;
-    String senderName = 'Unknown'; // ✅ default
+    String senderName = 'Unknown'; 
 
-    // Extract senderId (your current logic)
     if (json.containsKey('sender') &&
         json['sender'] != null &&
         json['sender']['id'] != null) {
       senderId = json['sender']['id'].toString();
 
-      // ✅ Try to get sender name from nested sender object
       senderName =
           (json['sender']['full_name'] ??
                   json['sender']['name'] ??

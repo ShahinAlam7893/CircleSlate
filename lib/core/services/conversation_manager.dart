@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:circleslate/core/network/endpoints.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -70,7 +71,7 @@ class ConversationManager {
       }
 
       final url = Uri.parse(
-        'https://app.circleslate.com/api/chat/conversations/create/',
+        '${Urls.createConversation}',
       );
       final payload = {
         'participant_ids': [int.parse(partnerId)],
@@ -149,7 +150,7 @@ class ConversationManager {
   ) async {
     try {
       final findUrl = Uri.parse(
-        'https://app.circleslate.com/api/chat/conversations/',
+        '${Urls.chatConversations}',
       );
       debugPrint(
         '[ConversationManager] Fetching user conversations from $findUrl',
@@ -229,7 +230,7 @@ class ConversationManager {
       }
 
       final url = Uri.parse(
-        'https://app.circleslate.com/api/chat/conversations/$conversationId/',
+        '${Urls.chatConversations}$conversationId/',
       );
       final response = await http.get(
         url,

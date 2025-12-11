@@ -166,7 +166,7 @@ class ConversationProvider extends ChangeNotifier {
         'assets/images/default_user.png';
 
     if (!url.startsWith('http')) {
-      url = 'https://app.circleslate.com$url';
+      url = '${Urls.baseUrl}$url';
     }
     _partnerImageUrl = url;
     debugPrint("IMAGE → Partner image loaded: $url");
@@ -416,7 +416,7 @@ class ConversationProvider extends ChangeNotifier {
 
   Future<String?> _resolveImageUrl(String? raw, String userId) async {
     if (raw?.isNotEmpty ?? false) {
-      return raw!.startsWith('http') ? raw : 'https://app.circleslate.com$raw';
+      return raw!.startsWith('http') ? raw : '${Urls.baseUrl}$raw';
     }
     return await UserImageHelper.getUserImageUrl(userId);
   }
@@ -605,7 +605,7 @@ class ConversationProvider extends ChangeNotifier {
 
     try {
       final url = Uri.parse(
-        'https://app.circleslate.com/api/chat/messages/$messageId/edit/',
+        '${Urls.baseUrl}/api/chat/messages/$messageId/edit/',
       );
       final response = await http.put(
         url,
@@ -669,7 +669,7 @@ class ConversationProvider extends ChangeNotifier {
 
     try {
       final url = Uri.parse(
-        'https://app.circleslate.com/api/chat/messages/$messageId/delete/',
+        '${Urls.baseUrl}/api/chat/messages/$messageId/delete/',
       );
       final response = await http.delete(
         url,
@@ -870,20 +870,20 @@ class ConversationProvider extends ChangeNotifier {
 
   void resume() {
     debugPrint("LIFECYCLE → Resumed");
-    _isChatPageVisible = true; // ✅ Mark as visible
+    _isChatPageVisible = true;
     _connectWebSocket();
-    markAllUnreadAsRead(); // ✅ Mark unread messages
+    markAllUnreadAsRead();
   }
 
   void pause() {
     debugPrint("LIFECYCLE → Paused");
-    _isChatPageVisible = false; // ✅ Mark as not visible
+    _isChatPageVisible = false; 
     _sendTyping(false);
   }
 
   @override
   void dispose() {
-    _isChatPageVisible = false; // ✅ Mark as not visible
+    _isChatPageVisible = false; 
     messageController.removeListener(_onTypingChanged);
     messageController.dispose();
     scrollController.dispose();

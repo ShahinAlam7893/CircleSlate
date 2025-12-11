@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart'; // Import Provider
-import 'package:circleslate/core/constants/app_colors.dart';
 import 'package:circleslate/core/constants/app_assets.dart';
 import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:circleslate/presentation/common_providers/auth_provider.dart';

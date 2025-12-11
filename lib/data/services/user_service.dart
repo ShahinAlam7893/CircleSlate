@@ -158,14 +158,14 @@ class AuthService {
   }) async {
     try {
       final response = await _apiHelper.post(
-        Urls.setnewpassword,
+        Urls.setNewPassword,
         {
           'email': email,
           'password': newPassword,
           'confirm_password': confirmPassword,
         },
       );
-      return _handleResponse(response, Urls.setnewpassword); // Check for errors and decode
+      return _handleResponse(response, Urls.setNewPassword); 
     } catch (e) {
       rethrow;
     }

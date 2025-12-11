@@ -1,7 +1,6 @@
 // presentation/pages/one_to_one_conversation_page.dart
 
 import 'dart:async';
-import 'package:circleslate/core/services/message_read_service.dart';
 import 'package:circleslate/core/services/message_storage_service.dart';
 import 'package:circleslate/core/services/one_to_one_chat_provider.dart';
 import 'package:circleslate/presentation/common_providers/chat_list_provider.dart';

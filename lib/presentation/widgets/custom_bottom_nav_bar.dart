@@ -1,12 +1,10 @@
 import 'package:circleslate/presentation/features/availability/view/create_edit_availability_screen.dart';
 import 'package:circleslate/presentation/features/chat/view/chat_list_screen.dart';
 import 'package:circleslate/presentation/features/event_management/view/upcoming_events_page.dart';
-import 'package:circleslate/presentation/features/group_management/view/group_management_page.dart';
 import 'package:circleslate/presentation/features/settings/view/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart'; // Still useful for internal page navigation (not bottom bar)
-import 'package:circleslate/presentation/features/settings/view/settings_screen.dart';
+// Still useful for internal page navigation (not bottom bar)
 import 'package:circleslate/presentation/features/home/view/home_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:circleslate/presentation/common_providers/auth_provider.dart';

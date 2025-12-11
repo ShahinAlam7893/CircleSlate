@@ -1,7 +1,4 @@
-import 'package:circleslate/core/constants/app_assets.dart';
 import 'package:circleslate/core/constants/app_colors.dart';
-import 'package:circleslate/presentation/features/settings/view/edit_profile_page.dart'
-    hide AppColors, AppAssets;
 import 'package:circleslate/presentation/routes/app_router.dart';
 import 'package:circleslate/core/utils/snackbar_utils.dart';
 import 'package:flutter/material.dart';

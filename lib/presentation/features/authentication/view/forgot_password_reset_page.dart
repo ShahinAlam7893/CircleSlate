@@ -17,8 +17,8 @@ class _ForgotPasswordResetPageState extends State<ForgotPasswordResetPage> {
   final _formKey = GlobalKey<FormState>();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-    final _emailFocusNode = FocusNode();
-  final _passwordFocusNode = FocusNode();
+    final _newPasswordFocusNode = FocusNode();
+  final _confirmPasswordFocusNode = FocusNode();
 
   @override
   void dispose() {
@@ -119,7 +119,7 @@ class _ForgotPasswordResetPageState extends State<ForgotPasswordResetPage> {
         children: [
           AuthInputField(
             controller: _newPasswordController,
-            focusNode: _passwordFocusNode,
+            focusNode: _newPasswordFocusNode,
             labelText: 'New Password *',
             hintText: 'Enter new password...',
             isPassword: true,
@@ -135,7 +135,7 @@ class _ForgotPasswordResetPageState extends State<ForgotPasswordResetPage> {
           ),
           const SizedBox(height: 20),
           AuthInputField(
-             focusNode: _passwordFocusNode,
+             focusNode: _confirmPasswordFocusNode,
             controller: _confirmPasswordController,
             labelText: 'Confirm Password *',
             hintText: 'Confirm new password...',

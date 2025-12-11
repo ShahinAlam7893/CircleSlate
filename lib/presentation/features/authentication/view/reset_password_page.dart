@@ -14,25 +14,31 @@ class ResetPasswordPage extends StatefulWidget {
 
 class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _currentPasswordController =
-  TextEditingController();
+final TextEditingController _currentPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-  TextEditingController();
-    final _emailFocusNode = FocusNode();
-  final _passwordFocusNode = FocusNode();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
+  // Give each field its OWN FocusNode
+  final _currentPasswordFocusNode = FocusNode();
+  final _newPasswordFocusNode = FocusNode();
+  final _confirmPasswordFocusNode = FocusNode();
 
 
   @override
   void dispose() {
+
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
+
+
+    _currentPasswordFocusNode.dispose();
+    _newPasswordFocusNode.dispose();
+    _confirmPasswordFocusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _handlePasswordReset(BuildContext context) async {
+Future<void> _handlePasswordReset(BuildContext context) async {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -42,9 +48,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     );
 
     final success = await authProvider.updatePassword(
-      oldPassword: _currentPasswordController.text,
-      newPassword: _newPasswordController.text,
-      confirmPassword: _confirmPasswordController.text,
+      oldPassword: _currentPasswordController.text.trim(),
+      newPassword: _newPasswordController.text.trim(),
+      confirmPassword: _confirmPasswordController.text.trim(),
     );
 
     if (success) {
@@ -52,8 +58,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-          Text(authProvider.errorMessage ?? 'Password reset failed.'),
+          content: Text(authProvider.errorMessage ?? 'Password reset failed.'),
+          backgroundColor: Colors.red.shade600,
         ),
       );
     }
@@ -106,7 +112,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   children: [
                     AuthInputField(
                       controller: _currentPasswordController,
-                      focusNode:  _passwordFocusNode,
+                      focusNode:  _currentPasswordFocusNode,
                       labelText: 'Old Password *',
                       hintText: 'Enter current password...',
                       isPassword: true,
@@ -120,7 +126,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                     const SizedBox(height: 20),
                     AuthInputField(
                       controller: _newPasswordController,
-                     focusNode:  _passwordFocusNode,
+                     focusNode:  _newPasswordFocusNode,
                       labelText: 'New Password *',
                       hintText: 'Enter new password...',
                       isPassword: true,
@@ -140,7 +146,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                     const SizedBox(height: 20),
                     AuthInputField(
                       controller: _confirmPasswordController,
-                       focusNode:  _passwordFocusNode,
+                       focusNode:  _confirmPasswordFocusNode,
                       labelText: 'Confirm Password *',
                       hintText: 'Confirm new password...',
                       isPassword: true,

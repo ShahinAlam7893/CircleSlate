@@ -168,38 +168,38 @@ class _LoginPageState extends State<LoginPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          SizedBox(
-                            width: 24.0,
-                            height: 24.0,
-                            child: Checkbox(
-                              value: _rememberMe,
-                              onChanged: (bool? newValue) {
-                                setState(() {
-                                  _rememberMe = newValue ?? false;
-                                });
-                              },
-                              activeColor: AppColors.primaryBlue,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4.0),
-                              ),
-                              side: const BorderSide(
-                                color: AppColors.inputOutline,
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8.0),
-                          const Text(
-                            'Remember me',
-                            style: TextStyle(
-                              fontSize: 14.0,
-                              color: AppColors.textColorSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
+                      // Row(
+                      //   children: [
+                      //     SizedBox(
+                      //       width: 24.0,
+                      //       height: 24.0,
+                      //       child: Checkbox(
+                      //         value: _rememberMe,
+                      //         onChanged: (bool? newValue) {
+                      //           setState(() {
+                      //             _rememberMe = newValue ?? false;
+                      //           });
+                      //         },
+                      //         activeColor: AppColors.primaryBlue,
+                      //         shape: RoundedRectangleBorder(
+                      //           borderRadius: BorderRadius.circular(4.0),
+                      //         ),
+                      //         side: const BorderSide(
+                      //           color: AppColors.inputOutline,
+                      //           width: 1.5,
+                      //         ),
+                      //       ),
+                      //     ),
+                      //     const SizedBox(width: 8.0),
+                      //     const Text(
+                      //       'Remember me',
+                      //       style: TextStyle(
+                      //         fontSize: 14.0,
+                      //         color: AppColors.textColorSecondary,
+                      //       ),
+                      //     ),
+                      //   ],
+                      // ),
                       GestureDetector(
                         onTap: () {
                           context.push('/forgot-password');

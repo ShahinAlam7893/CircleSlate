@@ -224,7 +224,6 @@ class UserImageHelper {
     );
   }
 
-  /// Build a CircleAvatar widget for a specific user by ID
   static Future<Widget> buildUserAvatarById({
     required String userId,
     double radius = 16,

@@ -140,7 +140,6 @@ class _SplashScreenState extends State<SplashScreen> {
       authProvider.setTokens(tokens.accessToken, tokens.refreshToken);
       await authProvider.initializeUserData().catchError((_) {});
     }
-    // GoRouter handles navigation automatically
   }
 
   @override

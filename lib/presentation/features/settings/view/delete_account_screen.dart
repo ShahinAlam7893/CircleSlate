@@ -1,10 +1,12 @@
+import 'package:circleslate/presentation/common_providers/auth_provider.dart';
+import 'package:circleslate/presentation/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:circleslate/core/constants/app_colors.dart'; // Ensure this import path is correct
-import 'package:circleslate/core/constants/app_strings.dart'; // Ensure this import path is correct
-// Ensure this import path is correct
-import 'package:circleslate/presentation/widgets/primary_button.dart'; // Reusing your PrimaryButton
+import 'package:circleslate/core/constants/app_colors.dart';
+import 'package:circleslate/core/constants/app_strings.dart';
+import 'package:circleslate/presentation/widgets/primary_button.dart';
 import 'package:circleslate/core/utils/snackbar_utils.dart';
+import 'package:provider/provider.dart';
 
 class DeleteAccountScreen extends StatefulWidget {
   const DeleteAccountScreen({Key? key}) : super(key: key);
@@ -14,17 +16,46 @@ class DeleteAccountScreen extends StatefulWidget {
 }
 
 class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
+  bool _isDeleting = false;
 
+  Future<void> _confirmDeleteAccount() async {
+    debugPrint("══════ Delete Account button pressed ══════");
 
-  void _confirmDeleteAccount() {
+    if (_isDeleting) return;
 
-    print('Attempting to delete account...');
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        SnackbarUtils.showSuccess(context, 'Account deleted successfully!');
-        context.pop();
-      }
+    setState(() {
+      _isDeleting = true;
     });
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    debugPrint("→ Calling authProvider.deleteAccount()");
+
+    final success = await authProvider.deleteAccount();
+
+    debugPrint("← deleteAccount() finished → success: $success");
+
+    if (!mounted) {
+      debugPrint("Widget is not mounted anymore → returning early");
+      return;
+    }
+
+    setState(() {
+      _isDeleting = false;
+    });
+
+    if (success) {
+      debugPrint("Account deletion successful");
+      SnackbarUtils.showSuccess(context, 'Account deleted successfully');
+      // Clear navigation stack and go to login
+      context.go(RoutePaths.login);
+    } else {
+      final errorMsg =
+          authProvider.errorMessage ??
+          'Failed to delete account. Please try again.';
+      debugPrint("Delete failed: $errorMsg");
+      SnackbarUtils.showError(context, errorMsg);
+    }
   }
 
   @override
@@ -108,14 +139,14 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      Icons.warning_amber_rounded, // Warning icon
+                      Icons.warning_amber_rounded,
                       color: Colors.red.shade700,
                       size: 24,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        AppStrings.deleteAccountWarning, // Warning text
+                        AppStrings.deleteAccountWarning,
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.red.shade700,
@@ -128,34 +159,38 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               ),
               const SizedBox(height: 40),
 
-              // Delete Account Button (Red)
-              PrimaryButton(
-                text: AppStrings.deleteAccountButton, // "Delete Account"
-                onPressed: _confirmDeleteAccount,
-                backgroundColor: Colors.red.shade600, // Red background
-                textColor: Colors.white,
+              // Delete Account Button - Only enable when not deleting
+              AbsorbPointer(
+                absorbing: _isDeleting,
+                child: PrimaryButton(
+                  text: _isDeleting
+                      ? 'Deleting...'
+                      : AppStrings.deleteAccountButton,
+                  onPressed: _confirmDeleteAccount,
+                  backgroundColor: Colors.red.shade600,
+                  textColor: Colors.white,
+                  isLoading: _isDeleting,
+                ),
               ),
               const SizedBox(height: 20),
-
-              // Cancel Button (White/Light)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    context.pop(); // Go back
+                    context.pop();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white, // White background
-                    foregroundColor: AppColors.textColorSecondary, // Grey text
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.textColorSecondary,
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.0),
-                      side: BorderSide(color: Colors.grey.shade300, width: 1), // Light grey border
+                      side: BorderSide(color: Colors.grey.shade300, width: 1),
                     ),
-                    elevation: 0, // No shadow
+                    elevation: 0,
                   ),
                   child: const Text(
-                    AppStrings.cancelDeleteButton, // "Cancel"
+                    AppStrings.cancelDeleteButton,
                     style: TextStyle(
                       fontSize: 14.0,
                       fontWeight: FontWeight.bold,

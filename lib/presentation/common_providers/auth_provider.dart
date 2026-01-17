@@ -83,7 +83,6 @@ class AuthProvider extends ChangeNotifier {
       if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
       } else {
-        // Use helper method to get user-friendly error message
         final userFriendlyMessage = _getUserFriendlyErrorMessage(
           response.statusCode, 
           response.body
@@ -371,6 +370,69 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+Future<bool> deleteAccount() async {
+  _setLoading(true);
+
+  try {
+    if (_accessToken == null || _accessToken!.isEmpty) {
+      return _setError("No valid access token found. Please login again.");
+    }
+
+    // ── VERY IMPORTANT ───────────────────────────────────────
+    // Print or log the token and URL (temporarily!)
+    debugPrint('Deleting account with token: $_accessToken');
+    debugPrint('URL: ${Urls.deleteAccount}');
+
+    final uri = Uri.parse(Urls.deleteAccount);
+
+    // Option A: Most common – DELETE without body
+    final response = await http.delete(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $_accessToken',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+
+    // Option B: Some backends want POST for dangerous actions
+    // final response = await http.post(
+    //   uri,
+    //   headers: {
+    //     'Authorization': 'Bearer $_accessToken',
+    //     'Content-Type': 'application/json',
+    //   },
+    //   body: jsonEncode({}), // or {"confirm": true} etc.
+    // );
+
+    debugPrint('Delete response: ${response.statusCode} → ${response.body}');
+
+    _setLoading(false);
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      await logout();
+      return true;
+    }
+
+    // ── Try to show the real error from server ───────────────────
+    String errorMsg = 'Failed to delete account';
+
+    try {
+      final data = jsonDecode(response.body);
+      errorMsg = data['message'] ?? data['detail'] ?? data['error'] ?? errorMsg;
+    } catch (_) {
+      errorMsg = 'Server error ${response.statusCode}';
+    }
+
+    return _setError(errorMsg);
+
+  } catch (e, stack) {
+    debugPrint('Delete account exception: $e');
+    debugPrint('Stack: $stack');
+    _setLoading(false);
+    return _setError('Network error: $e');
+  }
+}
   // -------------------- FETCH CONVERSATIONS --------------------
   Future<bool> fetchConversations() async {
     _errorMessage = null; // Clear previous errors

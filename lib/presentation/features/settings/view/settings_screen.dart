@@ -229,18 +229,17 @@ class SettingsPage extends StatelessWidget {
               ),
             ),
             _buildSettingsCard([
-              // _buildSettingsItem(
-              //   context,
-              //   'Delete Account',
-              //   Icons.delete_outline,
-              //       () {
-              //     // Implement delete account logic or another confirmation dialog
-              //     ScaffoldMessenger.of(context).showSnackBar(
-              //       const SnackBar(content: Text('Delete Account Tapped')),
-              //     );
-              //     context.push(RoutePaths.deleteAccount);
-              //   },
-              // ),
+              _buildSettingsItem(
+                context,
+                'Delete Account',
+                Icons.delete_outline,
+                    () {
+                  // ScaffoldMessenger.of(context).showSnackBar(
+                  //   const SnackBar(content: Text('Delete Account Tapped')),
+                  // );
+                  context.push(RoutePaths.deleteAccount);
+                },
+              ),
               _buildSettingsItem(
                 context,
                 'Logout',

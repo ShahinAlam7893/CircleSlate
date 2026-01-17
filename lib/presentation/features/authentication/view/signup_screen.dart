@@ -8,8 +8,6 @@ import 'package:circleslate/presentation/common_providers/auth_provider.dart';
 import 'dart:io'; // Import for File class
 import 'package:image_picker/image_picker.dart'; // Import the image_picker package
 
-// In your actual project, these classes would be separate files.
-// For self-containment in this example, we'll keep them here.
 class AppColors {
   static const Color primaryBlue = Color(0xFF4285F4);
   static const Color inputBorderColor = Colors.grey;
@@ -21,7 +19,7 @@ class AppColors {
   static const Color textLight = Color(0xB21B1D2A);
   static const Color accentBlue = Color(0xFF5A8DEE);
   static const Color inputOutline = Color(0x1A101010);
-  static const Color textColorPrimary = Color(0xE51B1D2A); // Added this for consistency
+  static const Color textColorPrimary = Color(0xE51B1D2A); 
 }
 
 class AuthInputField extends StatefulWidget {
@@ -157,18 +155,16 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
-  // Function to handle image picking
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery); // Opens gallery
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery); 
     if (pickedFile != null) {
       setState(() {
-        _profileImage = File(pickedFile.path); // Assigns the picked file
+        _profileImage = File(pickedFile.path);
       });
     }
   }
 
-  // This is the function that will be called on button press
   void _handleSignUp(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -186,12 +182,10 @@ class _SignUpPageState extends State<SignUpPage> {
       );
 
       if (success) {
-        // Handle successful registration
+
         SnackbarUtils.showSuccess(context, 'Account created successfully!');
-        // Navigate to the home page or a verification page
         context.push('/login');
       } else {
-        // Handle failed registration, show the error message from the provider
         SnackbarUtils.showError(context, authProvider.errorMessage ?? 'Registration failed.');
       }
     }

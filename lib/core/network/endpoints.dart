@@ -19,6 +19,7 @@ class Urls {
   static const String getUserById = '$baseUrl/api/auth/user/'; // + userId
   static const String users = '$baseUrl/api/users/';
   static const String children = '$baseUrl/api/auth/children/';
+  static const String deleteAccount = '$baseUrl/api/auth/delete-account/';
 
   // ========== CHAT & CONVERSATION ENDPOINTS ==========
   static const String conversations = '$baseUrl/api/auth/conversations';

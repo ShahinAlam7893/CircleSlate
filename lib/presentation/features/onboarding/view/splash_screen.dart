@@ -40,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen> {
         for (int i = 0; i <= 100; i++) {
           // Simulate loading progress
           await Future.delayed(const Duration(milliseconds: 30));
-          _loadingProgress.value = i / 100; // Update the progress
+          _loadingProgress.value = i / 100;
         }
 
         if (token != null && token.isNotEmpty) {

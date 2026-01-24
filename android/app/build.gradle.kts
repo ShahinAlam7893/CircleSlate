@@ -6,10 +6,20 @@ plugins {
     // id("com.google.gms.google-services") // <--- REMOVED THIS LINE (No Firebase)
 }
 
+import java.util.Properties
+import java.io.FileInputStream
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
+
 android {
-    namespace = "com.example.circleslate"
+    namespace = "com.app.circleslate"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973" // <--- ENSURE THIS IS EXPLICITLY SET
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -21,19 +31,32 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.circleslate"
+        applicationId = "com.app.circleslate"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+    create("release") {
+        keyAlias = keystoreProperties["keyAlias"] as String
+        keyPassword = keystoreProperties["keyPassword"] as String
+        storeFile = file("../${keystoreProperties["storeFile"]}")
+        storePassword = keystoreProperties["storePassword"] as String
+    }
+}
+
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
+
 
 flutter {
     source = "../.."

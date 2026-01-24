@@ -1,4 +1,4 @@
-package com.example.circleslate
+package com.app.circleslate
 
 import io.flutter.embedding.android.FlutterActivity
 
